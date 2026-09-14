@@ -15,7 +15,7 @@ namespace PenEngine
 	class Exception : public std::exception
 	{
 	public:
-		Exception(std::string_view operation, std::string_view detail, std::stacktrace stacktrace, const std::source_location& sourceLocation) :
+		Exception(std::string_view operation, std::string_view detail, std::stacktrace stacktrace = std::stacktrace::current(), const std::source_location& sourceLocation = std::source_location::current()) :
 			m_operation(operation),
 			m_detail(detail),
 			m_stacktrace(std::move(stacktrace)),
