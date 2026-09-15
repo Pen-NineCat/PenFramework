@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+// This file is a part of PenFramework Project
+// https://github.com/Pen-NineCat/PenFramework
+// 
+// Copyright (C) 2025 - Present PenNineCat. All rights reserved
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+-->
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+	<!--Engine/String/String.hpp-->
+	<Type Name="PenEngine::BasicString&lt;*&gt;">
+		<!-- 顶层显示字符串内容 -->
+		<DisplayString Condition="m_capacity &gt; LocalStorageCapacity">{m_buffer.Heap,na}</DisplayString>
+		<DisplayString Condition="m_capacity &lt;= LocalStorageCapacity">{m_buffer.Stack,na}</DisplayString>
+		<StringView Condition="m_capacity &gt; LocalStorageCapacity">m_buffer.Heap,na</StringView>
+		<StringView Condition="m_capacity &lt;= LocalStorageCapacity">m_buffer.Stack,na</StringView>
+
+		<!-- 展开视图 -->
+		<Expand>
+			<!-- 存储类型指示器 -->
+			<Synthetic Name="[StorageLocation]">
+				<DisplayString Condition="m_capacity &lt;= LocalStorageCapacity">Stack,[m_size]na</DisplayString>
+				<DisplayString Condition="m_capacity &gt; LocalStorageCapacity">Heap,[m_size]na</DisplayString>
+			</Synthetic>
+
+			<!-- 存储大小指示器-->
+			<Item Name="[Size]">m_size</Item>
+			<Item Name="[Capacity]">m_capacity</Item>
+
+			<ArrayItems>
+				<Size>m_size</Size>
+				<ValuePointer Condition="m_capacity &lt;= LocalStorageCapacity">m_buffer.Stack</ValuePointer>
+				<ValuePointer Condition="m_capacity &gt; LocalStorageCapacity">m_buffer.Heap</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<!--Engine/String/StringView.hpp-->
+	<Type Name="PenEngine::BasicStringView &lt; * &gt;">
+		<DisplayString>{m_str,[m_size]na}</DisplayString>
+		<StringView>m_str,[m_size]na</StringView>
+
+		<Expand>
+			<Item Name="[Size]">m_size</Item>
+			<ArrayItems>
+				<Size>m_size</Size>
+				<ValuePointer>m_str</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<!--Engine/Utils/Flag.hpp-->
+	<Type Name="PenEngine::Flag &lt; * &gt;">
+		<DisplayString>{m_value,en}</DisplayString>
+	</Type>
+
+	<!--Engine/IO/Path.h-->
+	<Type Name="PenEngine::Path">
+		<DisplayString>{m_path}</DisplayString>
+	</Type>
+
+	<!--IO/URI.h-->
+	<Type Name="PenEngine::URI">
+		<DisplayString>{m_uri}</DisplayString>
+	</Type>
+
+	<!--MouseMoveEvent-->
+	<Type Name="PenEngine::MouseMoveEvent">
+		<DisplayString>[X={m_x}, Y={m_y}, DeltaX={m_deltaX}, DeltaY={m_deltaY}]</DisplayString>
+		<Expand>
+			<Item Name="[X]">m_x</Item>
+			<Item Name="[Y]">m_y</Item>
+			<Item Name="[DeltaX]">m_deltaX</Item>
+			<Item Name="[DeltaY]">m_deltaY</Item>
+		</Expand>
+	</Type>
+
+	<!--KeyPressEvent-->
+	<Type Name="PenEngine::KeyPressEvent">
+		<DisplayString>[Key={m_key,en}, AutoRepeat={m_autoRepeat,b}]</DisplayString>
+		<Expand>
+			<Item Name="[Key]">m_key,en</Item>
+			<Item Name="[AutoRepeat]">m_autoRepeat,b</Item>
+		</Expand>
+	</Type>
+
+	<!--KeyReleaseEvent-->
+	<Type Name="PenEngine::KeyReleaseEvent">
+		<DisplayString>[Key={m_key,en}]</DisplayString>
+		<Expand>
+			<Item Name="[Key]">m_key,en</Item>
+		</Expand>
+	</Type>
+
+	<!--CharInputEvent-->
+	<Type Name="PenEngine::CharInputEvent">
+		<DisplayString>[Char={m_char}, ModifyKey={m_modifyKey,en}]</DisplayString>
+		<Expand>
+			<Item Name="[Char]">m_char</Item>
+			<Item Name="[ModifyKey]">m_modifyKey,en</Item>
+		</Expand>
+	</Type>
+
+	<!--WindowResizeEvent-->
+	<Type Name="PenEngine::WindowResizeEvent">
+		<DisplayString>[Width={m_width}, Height={m_height}]</DisplayString>
+		<Expand>
+			<Item Name="[Width]">m_width</Item>
+			<Item Name="[Height]">m_height</Item>
+		</Expand>
+	</Type>
+
+	<!--WindowMoveEvent-->
+	<Type Name="PenEngine::WindowMoveEvent">
+		<DisplayString>[X={m_x}, Y={m_y}]</DisplayString>
+		<Expand>
+			<Item Name="[X]">m_x</Item>
+			<Item Name="[Y]">m_y</Item>
+		</Expand>
+	</Type>
+
+	<!--WindowFocusEvent-->
+	<Type Name="PenEngine::WindowFocusEvent">
+		<DisplayString>[Focused={m_focused,b}]</DisplayString>
+		<Expand>
+			<Item Name="[Focused]">m_focused,b</Item>
+		</Expand>
+	</Type>
+
+	<!--WindowMinimizeEvent-->
+	<Type Name="PenEngine::WindowMinimizeEvent">
+		<DisplayString>[Minimized={m_minimized,b}]</DisplayString>
+		<Expand>
+			<Item Name="[Minimized]">m_minimized,b</Item>
+		</Expand>
+	</Type>
+
+	<!--WindowMaximizeEvent-->
+	<Type Name="PenEngine::WindowMaximizeEvent">
+		<DisplayString>[Maximized={m_maximized,b}]</DisplayString>
+		<Expand>
+			<Item Name="[Maximized]">m_maximized,b</Item>
+		</Expand>
+	</Type>
+
+	<!--DPIChangeEvent-->
+	<Type Name="PenEngine::DPIChangeEvent">
+		<DisplayString>[DPI={m_dpi}]</DisplayString>
+		<Expand>
+			<Item Name="[DPI]">m_dpi</Item>
+		</Expand>
+	</Type>
+
+	<!--CloseEvent-->
+	<Type Name="PenEngine::CloseEvent">
+		<DisplayString>CloseEvent</DisplayString>
+	</Type>
+</AutoVisualizer>

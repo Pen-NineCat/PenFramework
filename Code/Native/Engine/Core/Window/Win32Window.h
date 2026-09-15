@@ -5,6 +5,7 @@
 
 #pragma once
 #include "WindowInitContext.hpp"
+#include "../CoreEvent.hpp"
 #include "../../OS/Windows/Windows.h"
 
 namespace PenEngine
@@ -24,10 +25,15 @@ namespace PenEngine
 
 		bool DispatchWindowMessage();
 	private:
-		String m_title;
-		CoreApplication* m_application;
+		WString m_title;
+		CoreApplication* m_application = nullptr;
+		U32 m_windowX = 0;
+		U32 m_windowY = 0;
+		U32 m_windowWidth;
+		U32 m_windowHeight;
 		HWND m_hwnd = nullptr;
 		HINSTANCE m_hInstance = nullptr;
-		bool m_alreadyClose;
+		CoreEvent m_events;
+		bool m_alreadyClose = false;
 	};
 }

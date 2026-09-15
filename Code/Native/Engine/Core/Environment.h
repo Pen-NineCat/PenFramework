@@ -83,9 +83,9 @@
 #endif
 
 #ifdef PENFRAMEWORK_COMPLIER_MSVC
-#define NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
-#define NO_VTABLE __declspec(novtable)
-#define FORCE_INLINE __forceinline
+#define PENFRAMEWORK_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
+#define PENFRAMEWORK_NO_VTABLE __declspec(novtable)
+#define PENFRAMEWORK_FORCE_INLINE __forceinline
 #else
 #define NO_UNIQUE_ADDRESS [[no_unique_address]]
 #define NO_VTABLE

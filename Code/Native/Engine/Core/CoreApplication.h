@@ -5,7 +5,9 @@
 
 #pragma once
 
+#include "IApplicationHost.hpp"
 #include "Window/Window.hpp"
+#include "../Event/IEngineEvent.hpp"
 
 namespace PenEngine
 {
@@ -15,6 +17,8 @@ namespace PenEngine
 		CoreApplication();
 
 		int Exec();
+
+		bool PostEvent(IEngineEvent* event);
 	private:
 		struct CoreApplicationData
 		{
@@ -32,5 +36,7 @@ namespace PenEngine
 
 		CoreApplicationData m_applicationData;
 		OSWindow m_window;
+
+		std::unique_ptr<IApplicationHost> m_applicationHost;
 	};
 }
