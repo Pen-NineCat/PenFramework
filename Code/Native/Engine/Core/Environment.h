@@ -87,9 +87,9 @@
 #define PENFRAMEWORK_NO_VTABLE __declspec(novtable)
 #define PENFRAMEWORK_FORCE_INLINE __forceinline
 #else
-#define NO_UNIQUE_ADDRESS [[no_unique_address]]
-#define NO_VTABLE
-#define FORCE_INLINE _attribute __((always_inline))
+#define PENFRAMEWORK_NO_UNIQUE_ADDRESS [[no_unique_address]]
+#define PENFRAMEWORK_NO_VTABLE
+#define PENFRAMEWORK_FORCE_INLINE __attribute __((always_inline))
 #endif // PENFRAMEWORK_COMPLIER_MSVC
 
 #define PENFRAMEWORK_SUPPORT_PINVOKE

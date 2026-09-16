@@ -11,7 +11,7 @@
 #include <algorithm>
 #include <limits>
 #include <string>
-#include 
+#include <boost/locale/encoding_utf.hpp>
 
 namespace PenEngine
 {
@@ -36,7 +36,7 @@ namespace PenEngine
 	{
 	public:
 		explicit BadNumberConvertException(std::stacktrace stacktrace = std::stacktrace::current(), const std::source_location& sourceLocation = std::source_location::current())
-			: Exception("BadNumberConvertException", "无法将数组转为字符串", std::move(stacktrace), sourceLocation)
+			: Exception("BadNumberConvertException", "无法将数字转为字符串", std::move(stacktrace), sourceLocation)
 		{}
 	};
 
@@ -154,7 +154,7 @@ namespace PenEngine
 		void DeallocateBuffer() noexcept;
 		BasicString& operator=(BasicString&& other) noexcept;
 
-		/* implicit */ [[nodiscard]] operator std::basic_string<CharType>();
+		/* implicit */ [[nodiscard]] operator std::basic_string<CharType>() const;
 		/* implicit */ [[nodiscard]] operator std::basic_string_view<CharType>() const noexcept;
 		/* implicit */ [[nodiscard]] operator BasicStringView<CharType>() const noexcept;
 
@@ -171,6 +171,7 @@ namespace PenEngine
 		[[nodiscard]] Usize Capacity() const noexcept;
 		[[nodiscard]] CharType* Data() noexcept;
 		[[nodiscard]] const CharType* Data() const noexcept;
+		[[nodiscard]] CharType* DataEnd() noexcept;
 		[[nodiscard]] const CharType* DataEnd() const noexcept;
 
 		template <typename TargetCharType>
@@ -219,8 +220,14 @@ namespace PenEngine
 		[[nodiscard]] iterator begin() noexcept;
 		[[nodiscard]] iterator end() noexcept;
 
+		[[nodiscard]] const_iterator begin() const noexcept;
+		[[nodiscard]] const_iterator end() const noexcept;
+
 		[[nodiscard]] reverse_iterator rbegin() noexcept;
 		[[nodiscard]] reverse_iterator rend() noexcept;
+
+		[[nodiscard]] const_reverse_iterator rbegin() const noexcept;
+		[[nodiscard]] const_reverse_iterator rend() const noexcept;
 
 		[[nodiscard]] const_iterator cbegin() const noexcept;
 		[[nodiscard]] const_iterator cend() const noexcept;
@@ -233,7 +240,6 @@ namespace PenEngine
 		iterator erase(iterator begin, iterator end);
 
 		void push_back(CharType value) { PushBack(value); }
-		void clear() noexcept;
 
 		[[nodiscard]] constexpr bool StartWith(CharType ch) const noexcept;
 		[[nodiscard]] constexpr bool StartWith(const CharType* str) const noexcept;
@@ -321,7 +327,7 @@ namespace PenEngine
 		BasicString& PushBack(const BasicString& str);
 		template <typename Range> requires(IsBasicStringRange<CharType, Range>)
 			BasicString& PushBack(const Range& str);
-		BasicString& PushBack(const CharType* str, Usize count);
+		BasicString& PushBack(const CharType* str, Usize size);
 
 		BasicString& operator+=(CharType ch);
 		BasicString& operator+=(const CharType* str);
@@ -334,7 +340,7 @@ namespace PenEngine
 
 		void PushFront(const BasicString& other);
 		void PushFront(const CharType* str);
-		void PushFront(const CharType* str, Usize len);
+		void PushFront(const CharType* str, Usize size);
 		void PushFront(CharType ch, Usize count = 1);
 		void PushFront(const std::basic_string<CharType>& str);
 		void PushFront(std::basic_string_view<CharType> str);
@@ -348,7 +354,7 @@ namespace PenEngine
 		template <typename SourceCharType>
 		void ConvertAndPushBack(const SourceCharType* str);
 		template <typename SourceCharType>
-		void ConvertAndPushBack(const SourceCharType* str, Usize len);
+		void ConvertAndPushBack(const SourceCharType* str, Usize size);
 		template <typename SourceCharType>
 		void ConvertAndPushBack(const std::basic_string<SourceCharType>& str);
 		template <typename SourceCharType>
@@ -367,7 +373,7 @@ namespace PenEngine
 		template <typename SourceCharType>
 		void ConvertAndPushFront(const SourceCharType* str);
 		template <typename SourceCharType>
-		void ConvertAndPushFront(const SourceCharType* str, Usize len);
+		void ConvertAndPushFront(const SourceCharType* str, Usize size);
 		template <typename SourceCharType>
 		void ConvertAndPushFront(const std::basic_string<SourceCharType>& str);
 		template <typename SourceCharType>
@@ -384,7 +390,7 @@ namespace PenEngine
 		template <typename SourceCharType>
 		void ConvertFrom(const SourceCharType* str);
 		template <typename SourceCharType>
-		void ConvertFrom(const SourceCharType* str, Usize len);
+		void ConvertFrom(const SourceCharType* str, Usize size);
 		template <typename SourceCharType>
 		void ConvertFrom(const std::basic_string<SourceCharType>& str);
 		template <typename SourceCharType>
@@ -394,8 +400,8 @@ namespace PenEngine
 		template <typename T> requires (std::is_arithmetic_v<T> && !IsOneOf<T, char, wchar_t, char8_t, char16_t, char32_t>)
 			void ConvertFrom(T v);
 
-		void CleanAndRebuild(const CharType* str, Usize len);
-		void CleanAndRebuild(CharType ch, Usize count);
+		void DeallocateAndRebuild(const CharType* str, Usize len);
+		void DeallocateAndRebuild(CharType ch, Usize count);
 
 		[[nodiscard]] friend BasicString operator+(const BasicString& lhs, const BasicString& rhs)
 		{
@@ -770,7 +776,7 @@ namespace PenEngine
 	{}
 
 	template <typename CharType>
-	BasicString<CharType>::operator std::basic_string<CharType>()
+	BasicString<CharType>::operator std::basic_string<CharType>() const
 	{
 		return std::basic_string<CharType>(Data(), Size());
 	}
@@ -866,6 +872,12 @@ namespace PenEngine
 	}
 
 	template <typename CharType>
+	CharType* BasicString<CharType>::DataEnd() noexcept
+	{
+		return Data() + m_size;
+	}
+
+	template <typename CharType>
 	const CharType* BasicString<CharType>::DataEnd() const noexcept
 	{
 		return Data() + m_size;
@@ -884,7 +896,7 @@ namespace PenEngine
 	template <typename TargetCharType>
 	std::basic_string<TargetCharType> BasicString<CharType>::ConvertToStdString() const
 	{
-
+		return boost::locale::conv::utf_to_utf<TargetCharType, CharType>(Data(), DataEnd());
 	}
 
 	template <typename CharType>
@@ -952,7 +964,7 @@ namespace PenEngine
 			if (waste <= Size() * 1.5 && waste <= 512)
 				return;
 
-			Usize actualFitCapacity = Size() * 1.25;
+			Usize actualFitCapacity = Size() * 5 / 4;
 
 			if (actualFitCapacity <= LocalStorageCapacity)
 				MoveToLocal();
@@ -1054,6 +1066,78 @@ namespace PenEngine
 	}
 
 	template <typename CharType>
+	typename BasicString<CharType>::iterator BasicString<CharType>::begin() noexcept
+	{
+		return Iterator(Data());
+	}
+
+	template <typename CharType>
+	typename BasicString<CharType>::iterator BasicString<CharType>::end() noexcept
+	{
+		return Iterator(DataEnd());
+	}
+
+	template <typename CharType>
+	typename BasicString<CharType>::const_iterator BasicString<CharType>::begin() const noexcept
+	{
+		return const_iterator(Data());
+	}
+
+	template <typename CharType>
+	typename BasicString<CharType>::const_iterator BasicString<CharType>::end() const noexcept
+	{
+		return const_iterator(DataEnd());
+	}
+
+	template <typename CharType>
+	typename BasicString<CharType>::reverse_iterator BasicString<CharType>::rbegin() noexcept
+	{
+		return ReverseIterator(end());
+	}
+
+	template <typename CharType>
+	typename BasicString<CharType>::reverse_iterator BasicString<CharType>::rend() noexcept
+	{
+		return ReverseIterator(begin());
+	}
+
+	template <typename CharType>
+	typename BasicString<CharType>::const_reverse_iterator BasicString<CharType>::rbegin() const noexcept
+	{
+		return const_reverse_iterator(end());
+	}
+
+	template <typename CharType>
+	typename BasicString<CharType>::const_reverse_iterator BasicString<CharType>::rend() const noexcept
+	{
+		return const_reverse_iterator(begin());
+	}
+
+	template <typename CharType>
+	typename BasicString<CharType>::const_iterator BasicString<CharType>::cbegin() const noexcept
+	{
+		return const_iterator(Data());
+	}
+
+	template <typename CharType>
+	typename BasicString<CharType>::const_iterator BasicString<CharType>::cend() const noexcept
+	{
+		return const_iterator(DataEnd());
+	}
+
+	template <typename CharType>
+	typename BasicString<CharType>::const_reverse_iterator BasicString<CharType>::crbegin() noexcept
+	{
+		return const_reverse_iterator(cend());
+	}
+
+	template <typename CharType>
+	typename BasicString<CharType>::const_reverse_iterator BasicString<CharType>::crend() noexcept
+	{
+		return const_reverse_iterator(cbegin());
+	}
+
+	template <typename CharType>
 	Usize BasicString<CharType>::CalculateAllocateCapacity(Usize requestCapacity, Usize currentCapacity,
 		Usize maxCapacity) noexcept
 	{
@@ -1143,12 +1227,12 @@ namespace PenEngine
 	}
 
 	template <typename CharType>
-	BasicString<CharType>& BasicString<CharType>::PushBack(const CharType* str, Usize count)
+	BasicString<CharType>& BasicString<CharType>::PushBack(const CharType* str, Usize size)
 	{
-		if (count == 0)
+		if (size == 0)
 			return *this;
 
-		const Usize required = m_size + count;
+		const Usize required = m_size + size;
 
 		if (m_capacity <= LocalStorageCapacity)
 		{
@@ -1156,7 +1240,7 @@ namespace PenEngine
 				MoveToHeap(required);
 			else
 			{
-				std::char_traits<CharType>::copy(m_buffer.Stack + m_size, str, count);
+				std::char_traits<CharType>::copy(m_buffer.Stack + m_size, str, size);
 				m_size = required;
 				m_buffer.Stack[m_size] = CharType();
 				return *this;
@@ -1165,7 +1249,7 @@ namespace PenEngine
 		else if (required > m_capacity)
 			ReallocateHeapBuffer(required);
 
-		std::char_traits<CharType>::copy(m_buffer.Heap + m_size, str, count);
+		std::char_traits<CharType>::copy(m_buffer.Heap + m_size, str, size);
 		m_size = required;
 		m_buffer.Heap[m_size] = CharType();
 		return *this;
@@ -1271,22 +1355,22 @@ namespace PenEngine
 	}
 
 	template <typename CharType>
-	void BasicString<CharType>::PushFront(const CharType* str, Usize len)
+	void BasicString<CharType>::PushFront(const CharType* str, Usize size)
 	{
-		if (str == nullptr || len == 0)
+		if (str == nullptr || size == 0)
 			return;
 
-		Usize size = Size();
+		Usize currentSize = Size();
 
-		Reserve(size + len);
+		Reserve(currentSize + size);
 
 		CharType* buffer = Data();
 
-		std::copy_backward(buffer, buffer + size, buffer + size + len);
+		std::copy_backward(buffer, buffer + currentSize, buffer + currentSize + size);
 
-		std::char_traits<CharType>::copy(buffer, str, len);
+		std::char_traits<CharType>::copy(buffer, str, size);
 
-		m_size += len;
+		m_size += size;
 		buffer[m_size] = CharType();
 	}
 
@@ -1352,48 +1436,36 @@ namespace PenEngine
 
 	template <typename CharType>
 	template <typename SourceCharType>
-	void BasicString<CharType>::ConvertAndPushBack(const SourceCharType* str, Usize len)
+	void BasicString<CharType>::ConvertAndPushBack(const SourceCharType* str, Usize size)
 	{
-		// 预先处理
-		if (str == nullptr || len == 0)
+		if constexpr (std::is_same_v<SourceCharType, CharType>)
+		{
+			PushBack(str, size);
 			return;
-
-		Usize requiredLength = 0;
-
-		const SourceCharType* currentStartPosition = str;
-		const SourceCharType* endPosition = str + len;
-
-		// 计算转换后需要分配字符串长度
-		while (currentStartPosition != endPosition)
-		{
-			const boost::locale::utf::code_point c = boost::locale::utf::utf_traits<SourceCharType>::decode(currentStartPosition, endPosition);
-			if (c == boost::locale::utf::illegal || c == boost::locale::utf::incomplete)
-				throw BadUTFConvertException();
-			requiredLength += boost::locale::utf::utf_traits<CharType>::width(c);
 		}
-
-		// 重分配
-		Reserve(Size() + requiredLength);
-
-		// 移动原串
-		CharType* buffer = Data();
-		Usize size = Size();
-
-		std::copy_backward(buffer, buffer + size, buffer + size + requiredLength);
-
-		// 重定向到开头
-		currentStartPosition = str;
-
-		// 解码串
-		while (currentStartPosition != endPosition)
+		else
 		{
-			const boost::locale::utf::code_point c = boost::locale::utf::utf_traits<SourceCharType>::decode(currentStartPosition, endPosition);
-			// 这里不会有异常情况，因为如果有，计算长度时就已经抛出
-			boost::locale::utf::utf_traits<CharType>::encode(c, buffer++);
-		}
+			if (str == nullptr || size == 0)
+				return;
 
-		m_size += size;
-		buffer[size] = CharType();
+			auto begin = str;
+			auto end = str + size;
+
+			// 强异常安全保证
+			BasicString result;
+			result.Reserve(size);
+			auto inserter = std::back_insert_iterator(result);
+			while (begin != end)
+			{
+				boost::locale::utf::code_point c = boost::locale::utf::utf_traits<SourceCharType>::decode(begin, end);
+				if (c == boost::locale::utf::illegal || c == boost::locale::utf::incomplete)
+					throw BadUTFConvertException();
+
+				boost::locale::utf::utf_traits<CharType>::encode(c, inserter);
+			}
+
+			PushBack(result);
+		}
 	}
 
 	template <typename CharType>
@@ -1441,95 +1513,102 @@ namespace PenEngine
 	template <typename SourceCharType>
 	void BasicString<CharType>::ConvertAndPushFront(const BasicString<SourceCharType>& str)
 	{
-		ConvertAndPushFront(str.Data(),str.Size());
+		ConvertAndPushFront(str.Data(), str.Size());
 	}
 
 	template <typename CharType>
 	template <typename SourceCharType>
 	void BasicString<CharType>::ConvertAndPushFront(BasicStringView<SourceCharType> str)
 	{
-		ConvertAndPushFront(str.Data(),str.Size());
+		ConvertAndPushFront(str.Data(), str.Size());
 	}
 
 	template <typename CharType>
 	template <typename SourceCharType>
 	void BasicString<CharType>::ConvertAndPushFront(const SourceCharType* str)
 	{
-		ConvertAndPushFront(str,std::char_traits<CharType>::length(str));
+		ConvertAndPushFront(str, std::char_traits<CharType>::length(str));
 	}
 
 	template <typename CharType>
 	template <typename SourceCharType>
-	void BasicString<CharType>::ConvertAndPushFront(const SourceCharType* str, Usize len)
+	void BasicString<CharType>::ConvertAndPushFront(const SourceCharType* str, Usize size)
 	{
-		// 预先处理
-		if (str == nullptr || len == 0)
+		if constexpr (std::is_same_v<SourceCharType, CharType>)
+		{
+			PushFront(str, size);
 			return;
-
-		Usize requiredLength = 0;
-
-		const SourceCharType* currentStartPosition = str;
-		const SourceCharType* endPosition = str + len;
-
-		// 计算转换后需要分配字符串长度
-		while (currentStartPosition != endPosition)
-		{
-			const boost::locale::utf::code_point c = boost::locale::utf::utf_traits<SourceCharType>::decode(currentStartPosition, endPosition);
-			if (c == boost::locale::utf::illegal || c == boost::locale::utf::incomplete)
-				throw BadUTFConvertException();
-
-			requiredLength += boost::locale::utf::utf_traits<CharType>::width(c);
 		}
-
-		// 重分配
-		Reserve(Size() + requiredLength);
-
-		// 移动原串
-		CharType* buffer = Data();
-		Usize size = Size();
-
-		std::copy_backward(buffer, buffer + size, buffer + size + requiredLength);
-
-		// 重定向到开头
-		currentStartPosition = str;
-
-		// 解码串
-		while (currentStartPosition != endPosition)
+		else
 		{
-			const boost::locale::utf::code_point c = boost::locale::utf::utf_traits<SourceCharType>::decode(currentStartPosition, endPosition);
-			// 这里不会有异常情况，因为如果有，计算长度时就已经抛出
-			boost::locale::utf::utf_traits<CharType>::encode(c, buffer++);
-		}
+			// 预先处理
+			if (str == nullptr || size == 0)
+				return;
 
-		// 设置大小与\0结尾符位置为新的长度
-		m_size += requiredLength;
-		buffer[m_size] = CharType();
+			Usize requiredLength = 0;
+
+			const SourceCharType* currentStartPosition = str;
+			const SourceCharType* endPosition = str + size;
+
+			// 计算转换后需要分配字符串长度
+			while (currentStartPosition != endPosition)
+			{
+				const boost::locale::utf::code_point c = boost::locale::utf::utf_traits<SourceCharType>::decode(currentStartPosition, endPosition);
+				if (c == boost::locale::utf::illegal || c == boost::locale::utf::incomplete)
+					throw BadUTFConvertException();
+
+				requiredLength += boost::locale::utf::utf_traits<CharType>::width(c);
+			}
+
+			// 重分配
+			Reserve(Size() + requiredLength);
+
+			// 移动原串
+			CharType* buffer = Data();
+
+			std::copy_backward(buffer, buffer + m_size, buffer + m_size + requiredLength);
+
+			// 重定向到开头
+			currentStartPosition = str;
+
+			// 解码串
+			while (currentStartPosition != endPosition)
+			{
+				const boost::locale::utf::code_point c = boost::locale::utf::utf_traits<SourceCharType>::decode(currentStartPosition, endPosition);
+				// 这里不会有异常情况，因为如果有，计算长度时就已经抛出
+				buffer = boost::locale::utf::utf_traits<CharType>::encode(c, buffer);
+			}
+
+			// 设置大小与\0结尾符位置为新的长度
+			m_size += requiredLength;
+			Data()[m_size] = CharType();
+		}
 	}
 
 	template <typename CharType>
 	template <typename SourceCharType>
 	void BasicString<CharType>::ConvertAndPushFront(const std::basic_string<SourceCharType>& str)
 	{
-		ConvertAndPushFront(str.data(),str.size());
+		ConvertAndPushFront(str.data(), str.size());
 	}
 
 	template <typename CharType>
 	template <typename SourceCharType>
 	void BasicString<CharType>::ConvertAndPushFront(std::basic_string_view<SourceCharType> str)
 	{
-		ConvertAndPushFront(str.data(),str.size());
+		ConvertAndPushFront(str.data(), str.size());
 	}
 
 	template <typename CharType>
 	template <typename SourceCharType, typename Range> requires (IsBasicStringRange<SourceCharType, Range>)
-	void BasicString<CharType>::ConvertAndPushFront(const Range& str)
+		void BasicString<CharType>::ConvertAndPushFront(const Range& str)
 	{
-		ConvertAndPushFront(std::data(str),std::size(str));
+		ConvertAndPushFront(std::data(str), std::size(str));
 	}
 
 	template <typename CharType>
 	template <typename T> requires (std::is_arithmetic_v<T> && !IsOneOf<T, char, wchar_t, char8_t, char16_t, char32_t>)
-	void BasicString<CharType>::ConvertAndPushFront(T v)
+		void BasicString<CharType>::ConvertAndPushFront(T v)
 	{
 		char tmp[std::numeric_limits<T>::digits10 + 2];
 		auto [ptr, ec] = std::to_chars(tmp, tmp + std::size(tmp), v);
@@ -1544,7 +1623,7 @@ namespace PenEngine
 	template <typename SourceCharType>
 	void BasicString<CharType>::ConvertFrom(const BasicString<SourceCharType>& str)
 	{
-		ConvertFrom(str.Data(),str.Size());
+		ConvertFrom(str.Data(), str.Size());
 	}
 
 	template <typename CharType>
@@ -1558,15 +1637,15 @@ namespace PenEngine
 	template <typename SourceCharType>
 	void BasicString<CharType>::ConvertFrom(const SourceCharType* str)
 	{
-		ConvertFrom(str,std::char_traits<CharType>::length(str));
+		ConvertFrom(str, std::char_traits<CharType>::length(str));
 	}
 
 	template <typename CharType>
 	template <typename SourceCharType>
-	void BasicString<CharType>::ConvertFrom(const SourceCharType* str, Usize len)
+	void BasicString<CharType>::ConvertFrom(const SourceCharType* str, Usize size)
 	{
 		Clear();
-		ConvertAndPushBack(str,len);
+		ConvertAndPushBack(str, size);
 	}
 
 	template <typename CharType>
@@ -1585,14 +1664,14 @@ namespace PenEngine
 
 	template <typename CharType>
 	template <typename SourceCharType, typename Range> requires (IsBasicStringRange<SourceCharType, Range>)
-	void BasicString<CharType>::ConvertFrom(const Range& str)
+		void BasicString<CharType>::ConvertFrom(const Range& str)
 	{
-		ConvertFrom(std::data(str),std::size(str));
+		ConvertFrom(std::data(str), std::size(str));
 	}
 
 	template <typename CharType>
 	template <typename T> requires (std::is_arithmetic_v<T> && !IsOneOf<T, char, wchar_t, char8_t, char16_t, char32_t>)
-	void BasicString<CharType>::ConvertFrom(T v)
+		void BasicString<CharType>::ConvertFrom(T v)
 	{
 		char tmp[std::numeric_limits<T>::digits10 + 2];
 		auto [ptr, ec] = std::to_chars(tmp, tmp + std::size(tmp), v);
@@ -1604,7 +1683,7 @@ namespace PenEngine
 	}
 
 	template <typename CharType>
-	void BasicString<CharType>::CleanAndRebuild(const CharType* str, Usize len)
+	void BasicString<CharType>::DeallocateAndRebuild(const CharType* str, Usize len)
 	{
 		DeallocateBuffer();
 
@@ -1625,7 +1704,7 @@ namespace PenEngine
 	}
 
 	template <typename CharType>
-	void BasicString<CharType>::CleanAndRebuild(CharType ch, Usize count)
+	void BasicString<CharType>::DeallocateAndRebuild(CharType ch, Usize count)
 	{
 		DeallocateBuffer();
 

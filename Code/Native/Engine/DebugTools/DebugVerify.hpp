@@ -50,7 +50,7 @@
 #define DEBUG_ALWAYS_REPORT(message) \
 	DEBUG_REPORT_HANDLE(message) \
 
-#define DEBUG_VERIFY_REPORT_L(message) \
+#define DEBUG_VERIFY_REPORT_L(cond,message) \
 	if(!(cond)) [[unlikely]] \
 	{ \
 		DEBUG_REPORT_HANDLE_L(message) \
@@ -62,13 +62,9 @@
 #else // _DEBUG
 #define DEBUG_REPORT_HANDLE(message)
 #define DEBUG_VERIFY_REPORT(cond,message)
-#define CONSTEXPR_DEBUG_VERIFY_REPORT(cond,message)
 #define DEBUG_ALWAYS_REPORT(message) std::unreachable();
-#define CONSTEXPR_DEBUG_ALWAYS_REPORT(message) std::unreachable();
 #define DEBUG_VERIFY_REPORT_L(cond,message)
-#define CONSTEXPR_DEBUG_VERIFY_REPORT_L(cond,message)
 #define DEBUG_ALWAYS_REPORT_L(message) std::unreachable();
-#define CONSTEXPR_DEBUG_ALWAYS_REPORT_L(message)
 #endif // _DEBUG
 
 #define DEBUG_VERIFY_REPORT_WITH_REL_OPERATION(cond,message,operation) \

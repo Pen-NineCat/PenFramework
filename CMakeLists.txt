@@ -17,12 +17,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
       set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
     endif()
 
-    # Visual Studio Nativs 支持
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        message(STATUS "Nativs Visualizer ready.")
-        target_sources(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/Visualizers/PenFramework.natvis")
-    endif()
-
     add_compile_options(/utf-8) 
     add_compile_options(/Zc:preprocessor)
     add_compile_options(/diagnostics:caret)
@@ -49,3 +43,9 @@ add_executable(${PROJECT_NAME} ${SRC})
 target_link_libraries(${PROJECT_NAME} PRIVATE 
     Boost::locale 
 )
+
+# Visual Studio Nativs 支持
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message(STATUS "Nativs Visualizer ready.")
+    target_sources(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/Visualizers/PenFramework.natvis")
+endif()

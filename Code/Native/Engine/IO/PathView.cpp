@@ -41,9 +41,9 @@ namespace PenEngine
 
 		return true;
 
-		#endif //PENFRAMEWORK_OS_WIN32
-
+		#else
 		return HasRootDirectory();
+		#endif //PENFRAMEWORK_OS_WIN32
 	}
 
 	Usize PathView::Size() const noexcept

@@ -85,7 +85,8 @@ namespace PenEngine
 
 	bool CoreApplication::PostEvent(IEngineEvent* event)
 	{
-		return m_applicationHost->PostEvent(event);
+		// return m_applicationHost->PostEvent(event);
+		return false;
 	}
 
 	bool CoreApplication::PreLoad()

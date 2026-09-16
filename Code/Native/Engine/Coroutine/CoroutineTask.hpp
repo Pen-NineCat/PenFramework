@@ -129,7 +129,7 @@ namespace PenEngine
 		};
 
 		/// @brief 模板擦除类
-		class NO_VTABLE TaskBase
+		class PENFRAMEWORK_NO_VTABLE TaskBase
 		{
 		public:
 			virtual ~TaskBase() noexcept = default;

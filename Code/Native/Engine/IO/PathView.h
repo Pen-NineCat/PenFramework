@@ -60,7 +60,7 @@ namespace PenEngine
 	{
 		BasicString<CharType> tmp;
 		tmp.ConvertFrom(m_path);
-		return tmp.ToStdString();
+		return tmp;
 	}
 }
 

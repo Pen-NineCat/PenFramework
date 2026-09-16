@@ -207,10 +207,9 @@ namespace PenEngine
 			return false;
 
 		return true;
-
-		#endif //PENFRAMEWORK_OS_WIN32
-
+		#else  // //PENFRAMEWORK_OS_WIN32
 		return HasRootDirectory();
+		#endif //PENFRAMEWORK_OS_WIN32
 	}
 
 	bool Path::IsRelative() const noexcept
