@@ -307,7 +307,7 @@ namespace PenEngine
 		[[nodiscard]] constexpr Usize Find(std::basic_string_view<CharType> str, Usize pos = 0) const noexcept;
 		[[nodiscard]] constexpr Usize Find(const std::basic_string<CharType>& str, Usize pos = 0) const noexcept;
 		template <typename Range> requires(StringCompareDetail::IsSearchRange<CharType, Range>)
-		[[nodiscard]] constexpr Usize Find(const Range& str, Usize pos = 0) const noexcept;
+			[[nodiscard]] constexpr Usize Find(const Range& str, Usize pos = 0) const noexcept;
 		[[nodiscard]] constexpr Usize Find(const CharType* str, Usize size, Usize pos) const noexcept;
 
 		[[nodiscard]] constexpr Usize RFind(CharType ch, Usize pos = NPos) const noexcept;
@@ -316,7 +316,7 @@ namespace PenEngine
 		[[nodiscard]] constexpr Usize RFind(std::basic_string_view<CharType> str, Usize pos = NPos) const noexcept;
 		[[nodiscard]] constexpr Usize RFind(const std::basic_string<CharType>& str, Usize pos = NPos) const noexcept;
 		template <typename Range> requires(StringCompareDetail::IsSearchRange<CharType, Range>)
-		[[nodiscard]] constexpr Usize RFind(const Range& str, Usize pos = NPos) const noexcept;
+			[[nodiscard]] constexpr Usize RFind(const Range& str, Usize pos = NPos) const noexcept;
 		[[nodiscard]] constexpr Usize RFind(const CharType* str, Usize size, Usize pos) const noexcept;
 
 		[[nodiscard]] constexpr Usize FindFirstOf(CharType ch, Usize pos = 0) const noexcept;
@@ -325,7 +325,7 @@ namespace PenEngine
 		[[nodiscard]] constexpr Usize FindFirstOf(std::basic_string_view<CharType> str, Usize pos = 0) const noexcept;
 		[[nodiscard]] constexpr Usize FindFirstOf(const std::basic_string<CharType>& str, Usize pos = 0) const noexcept;
 		template <typename Range> requires(StringCompareDetail::IsSearchRange<CharType, Range>)
-		[[nodiscard]] constexpr Usize FindFirstOf(const Range& str, Usize pos = 0) const noexcept;
+			[[nodiscard]] constexpr Usize FindFirstOf(const Range& str, Usize pos = 0) const noexcept;
 		[[nodiscard]] constexpr Usize FindFirstOf(const CharType* str, Usize size, Usize pos) const noexcept;
 
 		[[nodiscard]] constexpr Usize FindFirstNotOf(CharType ch, Usize pos = 0) const noexcept;
@@ -334,7 +334,7 @@ namespace PenEngine
 		[[nodiscard]] constexpr Usize FindFirstNotOf(std::basic_string_view<CharType> str, Usize pos = 0) const noexcept;
 		[[nodiscard]] constexpr Usize FindFirstNotOf(const std::basic_string<CharType>& str, Usize pos = 0) const noexcept;
 		template <typename Range> requires(StringCompareDetail::IsSearchRange<CharType, Range>)
-		[[nodiscard]] constexpr Usize FindFirstNotOf(const Range& str, Usize pos = 0) const noexcept;
+			[[nodiscard]] constexpr Usize FindFirstNotOf(const Range& str, Usize pos = 0) const noexcept;
 		[[nodiscard]] constexpr Usize FindFirstNotOf(const CharType* str, Usize size, Usize pos) const noexcept;
 
 		[[nodiscard]] constexpr Usize FindLastOf(CharType ch, Usize pos = NPos) const noexcept;
@@ -343,7 +343,7 @@ namespace PenEngine
 		[[nodiscard]] constexpr Usize FindLastOf(std::basic_string_view<CharType> str, Usize pos = NPos) const noexcept;
 		[[nodiscard]] constexpr Usize FindLastOf(const std::basic_string<CharType>& str, Usize pos = NPos) const noexcept;
 		template <typename Range> requires(StringCompareDetail::IsSearchRange<CharType, Range>)
-		[[nodiscard]] constexpr Usize FindLastOf(const Range& str, Usize pos = NPos) const noexcept;
+			[[nodiscard]] constexpr Usize FindLastOf(const Range& str, Usize pos = NPos) const noexcept;
 		[[nodiscard]] constexpr Usize FindLastOf(const CharType* str, Usize size, Usize pos) const noexcept;
 
 		[[nodiscard]] constexpr Usize FindLastNotOf(CharType ch, Usize pos = NPos) const noexcept;
@@ -352,7 +352,7 @@ namespace PenEngine
 		[[nodiscard]] constexpr Usize FindLastNotOf(std::basic_string_view<CharType> str, Usize pos = NPos) const noexcept;
 		[[nodiscard]] constexpr Usize FindLastNotOf(const std::basic_string<CharType>& str, Usize pos = NPos) const noexcept;
 		template <typename Range> requires(StringCompareDetail::IsSearchRange<CharType, Range>)
-		[[nodiscard]] constexpr Usize FindLastNotOf(const Range& str, Usize pos = NPos) const noexcept;
+			[[nodiscard]] constexpr Usize FindLastNotOf(const Range& str, Usize pos = NPos) const noexcept;
 		[[nodiscard]] constexpr Usize FindLastNotOf(const CharType* str, Usize size, Usize pos) const noexcept;
 
 		// ================================================================
@@ -596,7 +596,7 @@ namespace PenEngine
 
 	template <typename CharType>
 	template <typename Range> requires(StringCompareDetail::IsSearchRange<CharType, Range>)
-	constexpr Usize BasicStringView<CharType>::Find(const Range& str, Usize pos) const noexcept
+		constexpr Usize BasicStringView<CharType>::Find(const Range& str, Usize pos) const noexcept
 	{
 		return Find(std::data(str), static_cast<Usize>(std::size(str)), pos);
 	}
@@ -641,7 +641,7 @@ namespace PenEngine
 
 	template <typename CharType>
 	template <typename Range> requires(StringCompareDetail::IsSearchRange<CharType, Range>)
-	constexpr Usize BasicStringView<CharType>::RFind(const Range& str, Usize pos) const noexcept
+		constexpr Usize BasicStringView<CharType>::RFind(const Range& str, Usize pos) const noexcept
 	{
 		return RFind(std::data(str), static_cast<Usize>(std::size(str)), pos);
 	}
@@ -686,7 +686,7 @@ namespace PenEngine
 
 	template <typename CharType>
 	template <typename Range> requires(StringCompareDetail::IsSearchRange<CharType, Range>)
-	constexpr Usize BasicStringView<CharType>::FindFirstOf(const Range& str, Usize pos) const noexcept
+		constexpr Usize BasicStringView<CharType>::FindFirstOf(const Range& str, Usize pos) const noexcept
 	{
 		return FindFirstOf(std::data(str), static_cast<Usize>(std::size(str)), pos);
 	}
@@ -732,7 +732,7 @@ namespace PenEngine
 
 	template <typename CharType>
 	template <typename Range> requires(StringCompareDetail::IsSearchRange<CharType, Range>)
-	constexpr Usize BasicStringView<CharType>::FindFirstNotOf(const Range& str, Usize pos) const noexcept
+		constexpr Usize BasicStringView<CharType>::FindFirstNotOf(const Range& str, Usize pos) const noexcept
 	{
 		return FindFirstNotOf(std::data(str), static_cast<Usize>(std::size(str)), pos);
 	}
@@ -777,7 +777,7 @@ namespace PenEngine
 
 	template <typename CharType>
 	template <typename Range> requires(StringCompareDetail::IsSearchRange<CharType, Range>)
-	constexpr Usize BasicStringView<CharType>::FindLastOf(const Range& str, Usize pos) const noexcept
+		constexpr Usize BasicStringView<CharType>::FindLastOf(const Range& str, Usize pos) const noexcept
 	{
 		return FindLastOf(std::data(str), static_cast<Usize>(std::size(str)), pos);
 	}
@@ -821,7 +821,7 @@ namespace PenEngine
 
 	template <typename CharType>
 	template <typename Range> requires(StringCompareDetail::IsSearchRange<CharType, Range>)
-	constexpr Usize BasicStringView<CharType>::FindLastNotOf(const Range& str, Usize pos) const noexcept
+		constexpr Usize BasicStringView<CharType>::FindLastNotOf(const Range& str, Usize pos) const noexcept
 	{
 		return FindLastNotOf(std::data(str), static_cast<Usize>(std::size(str)), pos);
 	}
@@ -839,11 +839,21 @@ namespace PenEngine
 }
 
 template <>
-struct std::formatter<PenEngine::StringView> : std::formatter<std::string_view>
+struct std::formatter<PenEngine::StringView, char> : std::formatter<std::string_view, char>
 {
-	static auto format(PenEngine::StringView str, std::format_context& ctx)
+	auto format(PenEngine::StringView str, std::format_context& ctx) const
 	{
-		return std::format_to(ctx.out(), "{}", std::string_view(str.Data(), str.Size()));
+		// 委托基类 format，以复用基类 parse 解析出的格式说明符
+		return std::formatter<std::string_view, char>::format(std::string_view(str.Data(), str.Size()), ctx);
+	}
+};
+
+template <>
+struct std::formatter<PenEngine::WStringView, wchar_t> : std::formatter<std::wstring_view, wchar_t>
+{
+	auto format(PenEngine::WStringView str, std::wformat_context& ctx) const
+	{
+		return std::formatter<std::wstring_view, wchar_t>::format(std::wstring_view(str.Data(), str.Size()), ctx);
 	}
 };
 

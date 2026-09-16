@@ -103,7 +103,7 @@ namespace PenEngine
 			[[nodiscard]] const T& Result() const
 			{
 				if (!m_result.has_value())
-					throw Exception("BadCoroutineResult", "CoroutineTask::Result", "任务未正常完成（存在未处理异常），无法获取返回值");
+					ThrowException(Exception("BadCoroutineResult", "任务未正常完成（存在未处理异常），无法获取返回值"));
 
 				return *m_result;
 			}
@@ -392,7 +392,7 @@ namespace PenEngine
 		[[nodiscard]] const T& Result() const
 		{
 			if (Base::m_coroutineHandle == nullptr)
-				throw Exception("BadCoroutineResult", "任务未正常完成，无法获取返回值");
+				ThrowException(Exception("BadCoroutineResult", "任务未正常完成，无法获取返回值"));
 			return Base::m_coroutineHandle.promise().Result();
 		}
 	};

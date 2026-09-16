@@ -7,6 +7,7 @@
 
 #pragma once
 #include "../Core/Environment.h"
+#include "../Exception/Exception.hpp"
 #include <utility>
 #ifdef PENFRAMEWORK_BUILD_DEBUG
 #ifdef PENFRAMEWORK_OS_WIN32
@@ -78,7 +79,7 @@
 	if(!(cond)) [[unlikely]] \
 	{ \
 		DEBUG_REPORT_HANDLE(message); \
-		throw exceptionType(__VA_ARGS__); \
+		PenEngine::ThrowException(exceptionType(__VA_ARGS__)); \
 	}
 
 #define DEBUG_ALWAYS_REPORT_WITH_REL_OPERATION(message,operation) \
@@ -87,4 +88,4 @@
 
 #define DEBUG_ALWAYS_REPORT_WITH_REL_EXCEPTION(message,exceptionType,...) \
 	DEBUG_REPORT_HANDLE(message); \
-	throw exceptionType(__VA_ARGS__);
+	PenEngine::ThrowException(exceptionType(__VA_ARGS__));

@@ -9,6 +9,7 @@
 #include "../Utils/Concept.hpp"
 #include "StringView.hpp"
 #include <algorithm>
+#include <format>
 #include <limits>
 #include <string>
 #include <boost/locale/encoding_utf.hpp>
@@ -27,16 +28,16 @@ namespace PenEngine
 	class BadUTFConvertException : public Exception
 	{
 	public:
-		explicit BadUTFConvertException(std::stacktrace stacktrace = std::stacktrace::current(), const std::source_location& sourceLocation = std::source_location::current())
-			: Exception("BadUTFConvertException", "无法识别可能的UTF编码字符", std::move(stacktrace), sourceLocation)
+		explicit BadUTFConvertException()
+			: Exception("BadUTFConvertException", "无法识别可能的UTF编码字符")
 		{}
 	};
 
 	class BadNumberConvertException : public Exception
 	{
 	public:
-		explicit BadNumberConvertException(std::stacktrace stacktrace = std::stacktrace::current(), const std::source_location& sourceLocation = std::source_location::current())
-			: Exception("BadNumberConvertException", "无法将数字转为字符串", std::move(stacktrace), sourceLocation)
+		explicit BadNumberConvertException()
+			: Exception("BadNumberConvertException", "无法将数字转为字符串")
 		{}
 	};
 
@@ -1459,7 +1460,7 @@ namespace PenEngine
 			{
 				boost::locale::utf::code_point c = boost::locale::utf::utf_traits<SourceCharType>::decode(begin, end);
 				if (c == boost::locale::utf::illegal || c == boost::locale::utf::incomplete)
-					throw BadUTFConvertException();
+					ThrowException(BadUTFConvertException());
 
 				boost::locale::utf::utf_traits<CharType>::encode(c, inserter);
 			}
@@ -1503,7 +1504,7 @@ namespace PenEngine
 		char tmp[std::numeric_limits<T>::digits10 + 2];
 		auto [ptr, ec] = std::to_chars(tmp, tmp + std::size(tmp), v);
 		if (ec != std::error_code())
-			throw BadNumberConvertException();
+			ThrowException(BadNumberConvertException());
 
 		Usize actualSize = ptr - tmp;
 		ConvertAndPushBack(tmp, actualSize);
@@ -1555,7 +1556,7 @@ namespace PenEngine
 			{
 				const boost::locale::utf::code_point c = boost::locale::utf::utf_traits<SourceCharType>::decode(currentStartPosition, endPosition);
 				if (c == boost::locale::utf::illegal || c == boost::locale::utf::incomplete)
-					throw BadUTFConvertException();
+					ThrowException(BadUTFConvertException());
 
 				requiredLength += boost::locale::utf::utf_traits<CharType>::width(c);
 			}
@@ -1613,7 +1614,7 @@ namespace PenEngine
 		char tmp[std::numeric_limits<T>::digits10 + 2];
 		auto [ptr, ec] = std::to_chars(tmp, tmp + std::size(tmp), v);
 		if (ec != std::error_code())
-			throw BadNumberConvertException();
+			ThrowException(BadNumberConvertException());
 
 		Usize actualSize = ptr - tmp;
 		ConvertAndPushFront(tmp, actualSize);
@@ -1676,7 +1677,7 @@ namespace PenEngine
 		char tmp[std::numeric_limits<T>::digits10 + 2];
 		auto [ptr, ec] = std::to_chars(tmp, tmp + std::size(tmp), v);
 		if (ec != std::error_code())
-			throw BadNumberConvertException();
+			ThrowException(BadNumberConvertException());
 
 		Usize actualSize = ptr - tmp;
 		ConvertFrom(tmp, actualSize);
@@ -2108,3 +2109,31 @@ namespace PenEngine
 	using WString = BasicString<wchar_t>;
 	using U32String = BasicString<char32_t>;
 }
+
+template <>
+struct std::formatter<PenEngine::String, char> : std::formatter<std::string_view, char>
+{
+	auto format(const PenEngine::String& str, std::format_context& ctx) const
+	{
+		// 委托基类 format，以复用基类 parse 解析出的格式说明符；并按 Size() 取全长，避免内嵌 '\0' 被截断
+		return std::formatter<std::string_view, char>::format(std::string_view(str.Data(), str.Size()), ctx);
+	}
+};
+
+template <>
+struct std::formatter<PenEngine::WString, wchar_t> : std::formatter<std::wstring_view, wchar_t>
+{
+	auto format(const PenEngine::WString& str, std::wformat_context& ctx) const
+	{
+		return std::formatter<std::wstring_view, wchar_t>::format(std::wstring_view(str.Data(), str.Size()), ctx);
+	}
+};
+
+template <typename CharType>
+struct std::hash<PenEngine::BasicString<CharType>>
+{
+	static PenEngine::Usize operator()(const PenEngine::BasicString<CharType>& str) noexcept
+	{
+		return std::hash<std::basic_string_view<CharType>>::operator()(std::basic_string_view<CharType>(str.Data(), str.Size()));
+	}
+};
