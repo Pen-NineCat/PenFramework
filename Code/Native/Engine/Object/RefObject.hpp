@@ -17,9 +17,9 @@ namespace PenEngine
 		RefObject() noexcept = default;
 
 		RefObject(const RefObject&) = delete;
-		RefObject(RefObject&&) = default;
+		RefObject(RefObject&&) = delete;
 		RefObject& operator=(const RefObject&) = delete;
-		RefObject& operator=(RefObject&&) = default;
+		RefObject& operator=(RefObject&&) = delete;
 
 		virtual ~RefObject() noexcept override = default;
 
@@ -51,6 +51,11 @@ namespace PenEngine
 		{
 			return m_refCount;
 		}
+
+		/// @brief 引用计数对象的 delete 时机只能由强引用归零决定，不能交给延迟销毁队列
+		/// @note 于是 PObject::DestroyLater 在 RefObject 上是明确的空操作（Debug 下会报告误用），
+		///       队列的 delete 也就永远不会落在 RefObject 上
+		[[nodiscard]] bool CanBeDeferredDestroyed() const noexcept override { return false; }
 	private:
 		Usize m_refCount = 0;
 	};

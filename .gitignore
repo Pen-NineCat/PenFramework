@@ -364,3 +364,7 @@ FodyWeavers.xsd
 
 # 我的个人文件
 PersonalWorkaroud
+
+# PenMemory 模块的本地构建输出（由 Code/Native/Memory/build.ps1 生成）
+Code/Native/Memory/build/
+Code/Native/Memory/build-debug/

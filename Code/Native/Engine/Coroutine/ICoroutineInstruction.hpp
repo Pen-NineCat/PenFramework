@@ -39,5 +39,12 @@ namespace PenEngine
 		{
 			return Awaitable{ this };
 		}
+
+		/// @brief 请求取消该指令当前等待的外部操作，并让其尽快转为就绪
+		/// @note 供调度器在 drain 超时等"必须结束"的路径上调用。
+		///       默认实现返回 false，表示指令无法被主动取消（调度器会按其自身策略强杀）。
+		///       实现者必须保证：Cancel() 返回 true 后，该指令最终会转为就绪，
+		///       且不再持有任何会在自身销毁后继续写入其内存的在途操作（例如重叠IO需先取消并等待落地）。
+		virtual bool Cancel() { return false; }
 	};
 }

@@ -1,19 +1,19 @@
-// File /Native/Engine/Core/Window/Window.hpp
+// File /Native/Engine/IO/FileDevice.hpp
 //
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 - Present Pen-NineCat(PenNineCat) https://github.com/Pen-NineCat
 
 #pragma once
 
-#include "../Environment.h"
+#include "../../Core/Environment.h"
 
 #ifdef PENFRAMEWORK_OS_WIN32
-#include "Win32Window.h"
-#endif // PENFRAMEWORK_OS_WIN32
+#include "Win32FileDevice.h"
+#endif
 
 namespace PenEngine
 {
 	#ifdef PENFRAMEWORK_OS_WIN32
-	using OSWindow = Win32Window;
-	#endif // PENFRAMEWORK_OS_WIN32
+	using FileDevice = Win32FileDevice;
+	#endif
 }

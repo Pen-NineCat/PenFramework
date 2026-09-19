@@ -16,6 +16,8 @@
 
 namespace PenEngine
 {
+	class CoroutineScheduler; // 前置声明：驱动接口只对调度器开放
+
 	/// @brief 协程任务的当前等待状态，由UpdateAwaiterState返回
 	enum class CoroutineTaskState
 	{
@@ -30,12 +32,14 @@ namespace PenEngine
 
 	namespace Detail
 	{
+		class TaskBase; // 前置声明：PromiseBase的等待对象需要按基类指针记录子任务
+
 		/// @brief promise公共部分：当前等待对象与未处理异常
 		template <typename Task>
 		class PromiseBase
 		{
 		public:
-			using AwaitedObject = std::variant<ICoroutineInstruction*, Task*>;
+			using AwaitedObject = std::variant<ICoroutineInstruction*, TaskBase*>;
 
 			static std::suspend_always initial_suspend() noexcept
 			{
@@ -65,7 +69,7 @@ namespace PenEngine
 			}
 
 			/// @brief 设置当前等待对象（子任务），由TaskCommon::SubTaskAwaitable::await_suspend调用
-			void SetAwaitedObject(Task* subTask) noexcept
+			void SetAwaitedObject(TaskBase* subTask) noexcept
 			{
 				m_awaitedObject = subTask;
 			}
@@ -124,58 +128,36 @@ namespace PenEngine
 		enum class CoroutineSubtaskResumeState
 		{
 			Progressed,   // 实际推进了一步
-			Stuck,        // 子任务链停在WaitInst/异常上，无法继续驱动
-			SubExecuting  // 链上的子任务正在执行中（重入），本次无法驱动
+			Stuck         // 子任务链停在WaitInst/异常上，无法继续驱动
 		};
 
+		template <typename Task, typename Promise, typename ValueType>
+		class TaskCommon;
+
 		/// @brief 模板擦除类
+		/// @note 驱动接口（Resume/ResumeSubTask）是调度器的专属职责，故设为 private：
+		///       只对本文件的 TaskCommon（等待链上的父任务驱动子任务）与 CoroutineScheduler 开放。
+		///       重入（对执行中的任务再次 resume）由调度侧的调用纪律排除，不再需要运行期执行栈。
 		class PENFRAMEWORK_NO_VTABLE TaskBase
 		{
+			friend class ::PenEngine::CoroutineScheduler;
+
+			template <typename Task, typename Promise, typename ValueType>
+			friend class TaskCommon;
 		public:
 			virtual ~TaskBase() noexcept = default;
 			[[nodiscard]] virtual bool Done() const noexcept = 0;
 			[[nodiscard]] virtual std::exception_ptr FindUnhandledException() const = 0;
-			virtual CoroutineSubtaskResumeState ResumeSubTask() = 0;
-			virtual void Resume() = 0;
 			[[nodiscard]] virtual CoroutineTaskState UpdateAwaiterState() const = 0;
 			[[nodiscard]] virtual std::exception_ptr GetUnhandledException() const noexcept = 0;
+
+			/// @brief 当前等待的指令（未等待指令时为nullptr）
+			/// 供调度器在drain超时等路径上请求取消外部操作
+			[[nodiscard]] virtual ICoroutineInstruction* CurrentAwaitedInstruction() const noexcept = 0;
+		private:
+			virtual CoroutineSubtaskResumeState ResumeSubTask() = 0;
+			virtual void Resume() = 0;
 		};
-
-		struct ExecutionGuard; // 前置声明
-
-		/// @brief 当前正在C++栈上执行的协程任务链（thread_local）
-		/// 所有resume都经由TaskCommon::Resume，故该链完整覆盖所有执行中的任务
-		inline thread_local ExecutionGuard* ExecutingTaskHead = nullptr;
-
-		/// @brief 协程执行栈守卫（RAII）
-		/// 用于让调度器在析构drain时识别"正在运行"的任务，避免resume运行中的协程（UB+死锁）
-		struct ExecutionGuard
-		{
-			ExecutionGuard* Prev = nullptr;
-			TaskBase* Task = nullptr;
-
-			explicit ExecutionGuard(TaskBase* task) noexcept
-				: Prev(ExecutingTaskHead), Task(task)
-			{
-				ExecutingTaskHead = this;
-			}
-
-			~ExecutionGuard() noexcept
-			{
-				ExecutingTaskHead = Prev;
-			}
-		};
-
-		/// @brief 判断任务是否正在执行（位于调用栈上）
-		[[nodiscard]] inline bool IsTaskExecuting(TaskBase* task) noexcept
-		{
-			for (ExecutionGuard* guard = ExecutingTaskHead; guard != nullptr; guard = guard->Prev)
-			{
-				if (guard->Task == task)
-					return true;
-			}
-			return false;
-		}
 
 		/// @brief 任务公共机制：句柄生命周期、状态机、子任务驱动
 		template <typename Task, typename Promise, typename ValueType>
@@ -184,7 +166,7 @@ namespace PenEngine
 		public:
 			using CoroutineHandle = std::coroutine_handle<Promise>;
 			using GenericCoroutineHandle = std::coroutine_handle<>;
-			using AwaitedObject = std::variant<ICoroutineInstruction*, Task*>;
+			using AwaitedObject = std::variant<ICoroutineInstruction*, TaskBase*>;
 
 			/// @brief 子任务等待器，co_await CoroutineTask时使用
 			/// await_suspend时把子任务注册为父协程的当前等待对象，随后挂起父协程，等待调度器驱动子任务
@@ -198,7 +180,7 @@ namespace PenEngine
 				template <typename PromiseType>
 				std::coroutine_handle<> await_suspend(std::coroutine_handle<PromiseType> coroutine) const noexcept
 				{
-					coroutine.promise().SetAwaitedObject(m_subTask);
+					coroutine.promise().SetAwaitedObject(static_cast<TaskBase*>(m_subTask));
 					return std::noop_coroutine();
 				}
 
@@ -264,35 +246,31 @@ namespace PenEngine
 			{
 				return SubTaskAwaitable{ static_cast<Task*>(this) };
 			}
-
+		private:
+			/// @brief 恢复协程一步（驱动接口：仅 CoroutineScheduler）
+			/// @note 调度器保证只对处于挂起态的任务调用本函数：任务执行期间不会被再次驱动
 			virtual void Resume() override
 			{
-				if (IsTaskExecuting(this))
-					return; // 防止重入resume（嵌套drain经ResumeSubTask的路径可能撞上执行中的任务）
+				if (Done())
+					return;
 
-				if (!Done())
-				{
-					ExecutionGuard guard(this);
+				// 恢复即离开当前await点：清空等待对象，
+				// 防止后续经不注册自身的awaiter（如suspend_always）挂起时残留悬空指针
+				m_coroutineHandle.promise().ClearAwaitedObject();
 
-					// 恢复即离开当前await点：清空等待对象，
-					// 防止后续经不注册自身的awaiter（如suspend_always）挂起时残留悬空指针
-					m_coroutineHandle.promise().ClearAwaitedObject();
-
-					m_coroutineHandle.resume();
-				}
+				m_coroutineHandle.resume();
 			}
 
-			/// @brief 恢复当前等待的子任务
+			/// @brief 恢复当前等待的子任务（驱动接口：CoroutineScheduler 与等待链上的父任务）
 			/// 若子任务等待的是更深层的子任务，则递归向下驱动
 			/// @retval Progressed 实际推进了某个协程
 			/// @retval Stuck 子任务链停在无法推进的指令上
-			/// @retval SubExecuting 链上的子任务正在执行中（重入），不能resume
 			virtual CoroutineSubtaskResumeState ResumeSubTask() override
 			{
 				AwaitedObject awaited = m_coroutineHandle.promise().CurrentAwaitedObject();
 
-				Task* subTask = nullptr;
-				if (auto* pSubTask = std::get_if<Task*>(&awaited))
+				TaskBase* subTask = nullptr;
+				if (auto* pSubTask = std::get_if<TaskBase*>(&awaited))
 					subTask = *pSubTask;
 
 				if (subTask == nullptr || subTask->Done())
@@ -301,8 +279,6 @@ namespace PenEngine
 				switch (subTask->UpdateAwaiterState())
 				{
 					case CoroutineTaskState::Ready:
-						if (IsTaskExecuting(subTask))
-							return CoroutineSubtaskResumeState::SubExecuting;
 						subTask->Resume();
 						return CoroutineSubtaskResumeState::Progressed;
 					case CoroutineTaskState::WaitSubtask:
@@ -314,11 +290,24 @@ namespace PenEngine
 
 				return CoroutineSubtaskResumeState::Stuck;
 			}
-
+		public:
 			/// @brief 获取自身的未处理异常（可能为空）
 			[[nodiscard]] virtual std::exception_ptr GetUnhandledException() const noexcept override
 			{
 				return m_coroutineHandle ? m_coroutineHandle.promise().GetUnhandledException() : nullptr;
+			}
+
+			/// @brief 当前等待的指令（未等待指令时为nullptr）
+			[[nodiscard]] virtual ICoroutineInstruction* CurrentAwaitedInstruction() const noexcept override
+			{
+				if (!m_coroutineHandle)
+					return nullptr;
+
+				AwaitedObject awaited = m_coroutineHandle.promise().CurrentAwaitedObject();
+				if (auto* pInstruction = std::get_if<ICoroutineInstruction*>(&awaited))
+					return *pInstruction;
+
+				return nullptr;
 			}
 
 			/// @brief 沿等待链下探，返回实际持有未处理异常的任务的exception_ptr
@@ -332,7 +321,7 @@ namespace PenEngine
 					return nullptr;
 
 				AwaitedObject awaited = m_coroutineHandle.promise().CurrentAwaitedObject();
-				if (auto* pSubTask = std::get_if<Task*>(&awaited))
+				if (auto* pSubTask = std::get_if<TaskBase*>(&awaited))
 				{
 					if (*pSubTask != nullptr)
 						return (*pSubTask)->FindUnhandledException();
@@ -351,7 +340,7 @@ namespace PenEngine
 					return CoroutineTaskState::WaitInstruction;
 				}
 
-				CoroutineTaskState operator()(Task* subTask) const
+				CoroutineTaskState operator()(TaskBase* subTask) const
 				{
 					if (subTask == nullptr)
 						return CoroutineTaskState::Ready;
@@ -377,6 +366,7 @@ namespace PenEngine
 	{
 	public:
 		using promise_type = Detail::ValuePromise<T>;
+		using ResultType = T;
 		using Base = Detail::TaskCommon<CoroutineTask<T>, promise_type, T>;
 		using CoroutineHandle = std::coroutine_handle<promise_type>;
 
@@ -403,6 +393,7 @@ namespace PenEngine
 	{
 	public:
 		using promise_type = Detail::ValuePromise<void>;
+		using ResultType = void;
 		using Base = Detail::TaskCommon<CoroutineTask<void>, promise_type, void>;
 		using CoroutineHandle = std::coroutine_handle<promise_type>;
 

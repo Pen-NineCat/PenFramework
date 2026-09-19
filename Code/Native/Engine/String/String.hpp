@@ -1432,7 +1432,7 @@ namespace PenEngine
 	template <typename SourceCharType>
 	void BasicString<CharType>::ConvertAndPushBack(const SourceCharType* str)
 	{
-		ConvertAndPushBack(str, std::char_traits<CharType>::length(str));
+		ConvertAndPushBack(str, std::char_traits<SourceCharType>::length(str));
 	}
 
 	template <typename CharType>
@@ -1528,7 +1528,7 @@ namespace PenEngine
 	template <typename SourceCharType>
 	void BasicString<CharType>::ConvertAndPushFront(const SourceCharType* str)
 	{
-		ConvertAndPushFront(str, std::char_traits<CharType>::length(str));
+		ConvertAndPushFront(str, std::char_traits<SourceCharType>::length(str));
 	}
 
 	template <typename CharType>
@@ -1638,7 +1638,7 @@ namespace PenEngine
 	template <typename SourceCharType>
 	void BasicString<CharType>::ConvertFrom(const SourceCharType* str)
 	{
-		ConvertFrom(str, std::char_traits<CharType>::length(str));
+		ConvertFrom(str, std::char_traits<SourceCharType>::length(str));
 	}
 
 	template <typename CharType>
