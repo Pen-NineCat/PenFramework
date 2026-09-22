@@ -16,14 +16,25 @@ namespace PenEngine
 
 	void DeferredDestroyQueue::CatchDeferredObject(PObject* object)
 	{
-		// 在这里做防御是多余的，因为PObject的DestroyLater逻辑与用户无关
-		m_deferredDestroyObjects[object]++;
+		// Catch 必须与 PostDeferredObject 成对：对没登记过的对象 Catch 会让计数 0 -> 1，
+		// 等于把一个从未调用过 DestroyLater 的对象送进销毁名单（它之后必然被 delete）
+		auto it = m_deferredDestroyObjects.find(object);
+
+		DEBUG_VERIFY_REPORT_WITH_REL_OPERATION(it != m_deferredDestroyObjects.end(),
+			"DeferredDestroyQueue: 对未调用DestroyLater的对象Catch", return);
+
+		++it->second;
 	}
 
 	void DeferredDestroyQueue::ReleaseDeferredObject(PObject* object)
 	{
-		// 在这里做防御是多余的，因为PObject的DestroyLater逻辑与用户无关
-		m_deferredDestroyObjects[object]--;
+		// 同理，对未登记或计数已归零的对象 Release 会让 Usize 下溢，该对象再也不会被销毁
+		auto it = m_deferredDestroyObjects.find(object);
+
+		DEBUG_VERIFY_REPORT_WITH_REL_OPERATION(it != m_deferredDestroyObjects.end() && it->second != 0,
+			"DeferredDestroyQueue: 对未登记或计数已归零的对象Release", return);
+
+		--it->second;
 	}
 
 	void DeferredDestroyQueue::Update()

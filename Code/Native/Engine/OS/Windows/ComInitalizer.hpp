@@ -1,17 +1,12 @@
-// File /Engine/OSPlatform/Windows/ComInitializer.hpp
-// This file is a part of PenFramework Project
-// https://github.com/Pen-NineCat/PenFramework
-// 
-// Copyright (C) 2025 - Present PenNineCat. All rights reserved
+// File /Native/Engine/OSPlatform/Windows/ComInitializer.hpp
 //
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 - Present Pen-NineCat(PenNineCat) https://github.com/Pen-NineCat
 
 #pragma once
 
-#include "../../Common/Environment.h"
-#include "../../DebugTools/TerminalVerify.hpp"
+#include "../../Core/Environment.h"
+#include "../../DebugTools/DebugVerify.hpp"
 #include "WindowsMinDef.h"
 #include <objbase.h>
 

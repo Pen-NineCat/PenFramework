@@ -7,23 +7,23 @@
 #include "../Core/Environment.h"
 #include "../Exception/Exception.hpp"
 #include "../Object/PObject.h"
+#include "../Object/SignalObject.hpp"
 #include "../Utils/ResourceScopeGuard.hpp"
 #include "../Utils/Singleton.hpp"
 #include "CoroutineTask.hpp"
 #include <boost/unordered/unordered_flat_map.hpp>
 #include <functional>
+#include <plf_hive.h>
 #include <thread>
 #include <utility>
 #include <vector>
-
-#include <plf_hive.h>
 
 namespace PenEngine
 {
 	class CoreApplication;
 
 	/// @note 仅支持单线程访问，构造时记录所属线程并在入口校验。
-	class CoroutineScheduler final : public Singleton<CoroutineScheduler>, PObject
+	class CoroutineScheduler final : public Singleton<CoroutineScheduler>, SignalObject
 	{
 		///
 		/// 设计取舍：参照 libUV 这类传统 AIO 的做法本应是"请求队列 + 线程池 + 应答队列 + 回调"，
@@ -48,9 +48,15 @@ namespace PenEngine
 		/// @brief 提交归属某个发送者的协程任务，所有权转交给调度器
 		/// @param sender 任务归属对象，nullptr 视为无主任务（等价于 PostDetachCoroutine）
 		/// @param task 待提交任务
-		/// @note 插入前先驱动一次：一步即完成的任务完全不进入任务表
+		/// @note 插入前先驱动一次
 		template <typename T>
 		void PostCoroutineTask(PObject* sender, CoroutineTask<T>&& task);
+
+		/// @brief 提交归属某个发送者的协程任务，所有权转交给调度器
+		/// @param sender 任务归属对象，nullptr 视为无主任务（等价于 PostDetachCoroutine）
+		/// @param task 待提交任务
+		/// @note 插入前先驱动一次，不应该再操作task指针
+		void PostCoroutineTask(PObject* sender, Detail::TaskBase* task);
 
 		/// @brief 提交无主协程任务，由调度器内部的无主任务表承载
 		template <typename T>

@@ -13,11 +13,11 @@ namespace PenEngine
 	/// @brief 全局延迟销毁队列（引用计数协议）
 	/// 对象触发 DestroyLater 后向队列注册自身，并可能被多个系统监听到：每个系统通过Push占用一个计数并维护自己的完成检查，
 	/// 完成时调用Release减一；本队列在每帧Update中delete所有计数归零的对象。
-	class DeferredDestroyQueue : public Singleton<DeferredDestroyQueue>, PObject
+	class DeferredDestroyQueue : public Singleton<DeferredDestroyQueue>, SignalObject
 	{
 	public:
 		DeferredDestroyQueue() noexcept { s_alive = true; }
-		~DeferredDestroyQueue() noexcept override { s_alive = false; }
+		virtual ~DeferredDestroyQueue() noexcept override { s_alive = false; }
 
 		void PostDeferredObject(PObject* object);
 		void CatchDeferredObject(PObject* object);

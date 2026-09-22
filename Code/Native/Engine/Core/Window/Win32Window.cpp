@@ -19,6 +19,11 @@ extern "C"
 
 namespace PenEngine
 {
+	Win32Window::Win32Window() noexcept
+	{
+		g_win32Window = this;
+	}
+
 	Win32Window::~Win32Window() noexcept
 	{
 		Close();

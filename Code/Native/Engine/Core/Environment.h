@@ -35,15 +35,15 @@
 #endif
 
 #ifdef _MSC_VER
-#define PENFRAMEWORK_COMPLIER_MSVC
+#define PENFRAMEWORK_COMPILER_MSVC
 #endif
 
 #if defined(__GNUC__) && !defined(__clang__)
-#define PENFRAMEWORK_COMPLIER_GCC
+#define PENFRAMEWORK_COMPILER_GCC
 #endif
 
 #ifdef __clang__
-#define PENFRAMEWORK_COMPLIER_CLANG
+#define PENFRAMEWORK_COMPILER_CLANG
 #endif
 
 #if defined(_M_IX86) || defined(__i386__)
@@ -82,7 +82,7 @@
 #define PENFRAMEWORK_BUILD_RELEASE
 #endif
 
-#ifdef PENFRAMEWORK_COMPLIER_MSVC
+#ifdef PENFRAMEWORK_COMPILER_MSVC
 #define PENFRAMEWORK_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
 #define PENFRAMEWORK_NO_VTABLE __declspec(novtable)
 #define PENFRAMEWORK_FORCE_INLINE __forceinline
@@ -90,7 +90,7 @@
 #define PENFRAMEWORK_NO_UNIQUE_ADDRESS [[no_unique_address]]
 #define PENFRAMEWORK_NO_VTABLE
 #define PENFRAMEWORK_FORCE_INLINE __attribute __((always_inline))
-#endif // PENFRAMEWORK_COMPLIER_MSVC
+#endif // PENFRAMEWORK_COMPILER_MSVC
 
 #define PENFRAMEWORK_SUPPORT_PINVOKE
 

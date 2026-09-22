@@ -1,14 +1,12 @@
 // File /Native/Engine/Object/Internal/MetaFunction.hpp
-// This file is a part of PenFramework Project
-// https://github.com/Pen-NineCat/PenFramework
-// 
+//
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 - Present Pen-NineCat(PenNineCat) https://github.com/Pen-NineCat
 
 #pragma once
 #include "../../String/StringView.hpp"
 
-namespace PenEngine
+namespace PenEngine::Internal
 {
 	constexpr HashID CalculateClassMetaHash(StringView str) noexcept
 	{

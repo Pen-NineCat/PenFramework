@@ -33,17 +33,20 @@ endif()
 
 # 包管理 
 # ---------------------------------------------
-# Char convert 支持
-find_package(Boost CONFIG REQUIRED COMPONENTS
-	locale
-)
+# Char convert boost::locale 支持
 # boost::unordered_flat_map 支持
 find_package(Boost CONFIG REQUIRED COMPONENTS
+	locale
     unordered
 )
-# Coroutine System 支持
+
+# Coroutine System plf-hive支持
 # 如果std::hive可用，可以使用std::hive替换
 find_path(PLF_HIVE_INCLUDE_DIRS "plf_hive.h")
+
+if(WIN32)
+    find_package(unofficial-wintoast CONFIG REQUIRED)
+endif()
 # ---------------------------------------------
 
 # PenMemory 分配器：Code/Native/Memory → PenMemory.dll
@@ -71,6 +74,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Boost::unordered
 )
 target_include_directories(${PROJECT_NAME} PRIVATE ${PLF_HIVE_INCLUDE_DIRS})
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::wintoast::wintoast)
+endif()
 # ---------------------------------------------
 
 # PenMemory 分配器（PenMemory.dll + 导入库）

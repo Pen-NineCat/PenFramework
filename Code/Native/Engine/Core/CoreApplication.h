@@ -19,6 +19,7 @@ namespace PenEngine
 		int Exec();
 
 		bool PostEvent(IEngineEvent* event);
+
 	private:
 		struct CoreApplicationData
 		{

@@ -1,4 +1,4 @@
-# PenMemory：PenFramework 的内存分配器（由 PersonalWorkaroud/mini-tcmalloc 移植而来）
+# PenMemory：PenFramework 的内存分配器（由 PersonalWorkaround/mini-tcmalloc 移植而来）
 # ----------------------------------------------------------------------------
 # 由根 CMakeLists.txt 通过 add_subdirectory(Code/Native/Memory) 引入，
 # 构建成 PenMemory.dll，主程序通过导入库 PenMemory.lib 调用它的 C ABI

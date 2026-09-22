@@ -4,6 +4,10 @@
   "dependencies": [
     "boost-unordered",
     "boost-locale",
-    "plf-hive"
+    "plf-hive",
+    {
+      "name": "wintoast",
+      "platform": "windows"
+    }
   ]
 }

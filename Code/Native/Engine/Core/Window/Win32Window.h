@@ -15,7 +15,7 @@ namespace PenEngine
 	class Win32Window
 	{
 	public:
-		Win32Window() noexcept = default;
+		Win32Window() noexcept;
 		~Win32Window() noexcept;
 
 		HWND Create(const WindowInitContext& context);

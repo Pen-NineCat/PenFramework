@@ -24,6 +24,12 @@ namespace PenEngine
 		constexpr Usize MaxDrainWaitSteps = 100000;
 	}
 
+	void CoroutineScheduler::PostCoroutineTask(PObject* sender, Detail::TaskBase* task)
+	{
+		VerifyThread();
+		PostRaw(sender,task);
+	}
+
 	CoroutineScheduler::~CoroutineScheduler() noexcept
 	{
 		Drain();
@@ -178,8 +184,8 @@ namespace PenEngine
 	{
 		DEBUG_VERIFY_REPORT(sender != nullptr, "CoroutineScheduler: 有主任务必须携带发送者");
 
-		Connect(sender->DestroySignal, [this](PObject* object) noexcept { OnSenderDestroy(object); });
-		Connect(sender->DestroyLatersSignal, [this](PObject* object) noexcept { OnSenderDestroyLater(object); });
+		Connect(sender->DestroySignal, [this](SignalObject* object) noexcept { OnSenderDestroy(static_cast<PObject*>(object)); });
+		Connect(sender->DestroyLaterSignal, [this](PObject* object) noexcept { OnSenderDestroyLater(object); });
 	}
 
 	// ------------------------------------------------------------------
@@ -413,7 +419,7 @@ namespace PenEngine
 			{
 				// 组存活与信号连接同寿（I5）
 				Disconnect(sender->DestroySignal);
-				Disconnect(sender->DestroyLatersSignal);
+				Disconnect(sender->DestroyLaterSignal);
 
 				// 释放本组占用的延迟销毁计数
 				if (caughtDeferred && DeferredDestroyQueue::IsAlive())
@@ -628,6 +634,11 @@ namespace PenEngine
 	// ------------------------------------------------------------------
 	// 异常
 	// ------------------------------------------------------------------
+
+	void CoroutineScheduler::SetExceptionHandler(std::function<void(std::exception_ptr)> handler)
+	{
+		m_exceptionHandler = std::move(handler);
+	}
 
 	void CoroutineScheduler::HandleException(std::exception_ptr exception) const
 	{
