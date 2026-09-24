@@ -1,0 +1,20 @@
+{
+    "application": {
+        "title": "PenFramework",
+        "version": "Alpha 0.0.1"
+    },
+    "window": {
+        "width": 1920,
+        "height": 1080,
+        "maximized": false
+    },
+    "timing": {
+        "max_tps": 50,
+        "max_fps": 0
+    },
+    "render": {
+        "interface": "D3D11",
+        "enable_rhi_thread": false,
+        "enable_render_thread": false
+    }
+}

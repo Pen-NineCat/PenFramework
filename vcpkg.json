@@ -8,6 +8,7 @@
     {
       "name": "wintoast",
       "platform": "windows"
-    }
+    },
+    "magic-enum"
   ]
 }

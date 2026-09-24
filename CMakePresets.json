@@ -20,6 +20,7 @@
     {
       "name": "x64-debug",
       "displayName": "x64 Debug",
+      "description": "控制台子系统，入口为 int main",
       "inherits": "windows-base",
       "architecture": {
         "value": "x64",
@@ -27,17 +28,38 @@
       },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "OUTPUT_BUILD_TYPE": "Terminal",
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
         "CMAKE_PROJECT_TOP_LEVEL_INCLUDES": "$env{VSINSTALLDIR}Common7/IDE/CommonExtensions/Microsoft/CMake/cmake/Microsoft/SegmentHeap.cmake"
       }
     },
     {
+      "name": "x64-debug native",
+      "displayName": "x64 Debug Native (WinMain)",
+      "description": "Windows 子系统，入口为 WinMain，无控制台窗口",
+      "inherits": "x64-debug",
+      "cacheVariables": {
+        "OUTPUT_BUILD_TYPE": "Native"
+      }
+    },
+    {
       "name": "x64-release",
       "displayName": "x64 Release",
+      "description": "控制台子系统，入口为 int main",
       "inherits": "x64-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "OUTPUT_BUILD_TYPE": "Terminal",
         "CMAKE_PROJECT_TOP_LEVEL_INCLUDES": "$env{VSINSTALLDIR}Common7/IDE/CommonExtensions/Microsoft/CMake/cmake/Microsoft/SegmentHeap.cmake"
+      }
+    },
+    {
+      "name": "x64-release native",
+      "displayName": "x64 Release Native (WinMain)",
+      "description": "Windows 子系统，入口为 WinMain，无控制台窗口",
+      "inherits": "x64-release",
+      "cacheVariables": {
+        "OUTPUT_BUILD_TYPE": "Native"
       }
     },
     {
