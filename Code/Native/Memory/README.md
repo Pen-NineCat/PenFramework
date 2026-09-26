@@ -30,8 +30,8 @@ Allocate/Deallocate
   基础对齐时自动改走 `AlignedAllocate`。
 * 全局 `operator new/delete` 接管在 `Code/Native/Engine/Memory/MemoryOperator.cpp`，
   只替换主程序自己的 new/delete（DLL 边界外的分配不受影响）。
-* 测试：CMake 选项 `PEN_MEMORY_BUILD_TESTS`（默认 OFF）打开后可用 ctest 运行；
-  `build.ps1` 仍可独立编译并运行测试。
+* 测试：根 CMake 的统一选项 `PENFRAMEWORK_BUILD_TESTS`（默认 OFF，约定见 `Docs/Testing.md`）
+  打开后可用 ctest 运行；`build.ps1` 仍可独立编译并运行测试。
 * 文档中出现的旧接口名已一并更新，例如 `CentralFreeList::length()` → `CachedObjectCount()`、
   `os::PageSize()` → `os::GetSystemPageSize()`。
 
@@ -46,9 +46,10 @@ CentralCache.h/.cpp 每个 size class 的中心空闲链表（批量搬运 + spa
 ThreadCache.h/.cpp  线程本地缓存（FreeList 数组、慢启动、Scavenge、全局预算）
 Interface.h/.cpp    对外 C ABI（`extern "C"`）的实现：4 个入口 + 统计/自检
 Globals.hpp         全局单例 Globals（等价 tc_globals，内部 C++ 状态，不进 C ABI）
-tests/              6 个测试程序 + 1 个基准程序
+Test/UnitTest/      6 个测试程序（MiniTest 框架）
+Test/Benchmark/     1 个基准程序
 build.ps1           Windows/MSVC 一键编译 + 跑测试
-CMakeLists.txt      PenMemory.dll 的构建（开 PEN_MEMORY_BUILD_TESTS 时带测试）
+CMakeLists.txt      PenMemory.dll 的构建（开 PENFRAMEWORK_BUILD_TESTS 时带测试）
 DESIGN.md           源码理解汇报 + 设计取舍
 ```
 
@@ -93,7 +94,7 @@ size class 为 0 表示这是页级（大对象）分配，或该 span 已回到
 主程序链接导入库；DLL 与 exe 输出在同一构建目录。测试默认不构建：
 
 ```sh
-cmake -B build -DPEN_MEMORY_BUILD_TESTS=ON
+cmake -B build -DPENFRAMEWORK_BUILD_TESTS=ON
 cmake --build build
 ctest --test-dir build --output-on-failure
 ```
@@ -112,10 +113,10 @@ powershell -ExecutionPolicy Bypass -File build.ps1 -Bench     # 附带跑性能�
 ### POSIX
 
 ```sh
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DPEN_MEMORY_BUILD_TESTS=ON && cmake --build build && ctest --test-dir build
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DPENFRAMEWORK_BUILD_TESTS=ON && cmake --build build && ctest --test-dir build
 # 或者手工：
 g++ -std=c++23 -O2 -pthread -I. Interface.cpp ThreadCache.cpp CentralCache.cpp \
-    PageCache.cpp Radix.cpp OSMemory.cpp tests/test_interface.cpp -o test_interface
+    PageCache.cpp Radix.cpp OSMemory.cpp Test/UnitTest/test_interface.cpp -o test_interface
 ```
 
 ## 4. 三层各自的职责
@@ -145,7 +146,7 @@ g++ -std=c++23 -O2 -pthread -I. Interface.cpp ThreadCache.cpp CentralCache.cpp \
 每个用例结束后都调用 `VerifyHeap()`，它会在持锁状态下校验：空闲链表分桶正确、
 span 每一页都映射到自己、相邻空闲 span 已合并、页数/对象数记账一致、对象空闲链表无环且计数正确。
 
-CMake 侧打开 `PEN_MEMORY_BUILD_TESTS` 后，ctest 运行同一批用例；其中 `test_override` 链接
+CMake 侧打开 `PENFRAMEWORK_BUILD_TESTS` 后，ctest 运行同一批用例；其中 `test_override` 链接
 `PenMemory.dll`，只使用 C ABI 与 `Common.hpp` 里的 header-only 常量/内联函数，其余用例直接编译源码。
 
 ## 6. 性能（本机 MSVC /O2，4M 次 alloc+free 循环，64 个对象工作集）

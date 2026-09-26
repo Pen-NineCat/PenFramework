@@ -8,6 +8,7 @@
 #include "CommandLineUtils.h"
 #include "DeferredDestroyQueue.h"
 #include "../Coroutine/CoroutineScheduler.hpp"
+#include "../Utils/Logger/Logger.hpp"
 #include "../Utils/NotificationBox/NotificationBox.hpp"
 #include <cstdio>
 #include <format>
@@ -93,6 +94,10 @@ namespace PenEngine
 
 	CoreApplication::CoreApplication(int argc, char* argv[])
 	{
+		// 启动期的第一个动作：先把日志器拉起来，之后（含命令行错误）发生的一切都进日志。
+		// 日志路径不来自配置，因此不必等 BuildConfiguration（理由见 InitializeLogger）
+		InitializeLogger();
+
 		// 取参：是否真的用 argc/argv 由平台决定（Windows 忽略它们，走宽字符 API）。
 		// 两个入口都传各自的入口参数即可，不需要在入口处做平台判断
 		std::vector<String> argumentVector = CommandLineUtils::GetArgumentVector(argc, argv);
@@ -125,9 +130,43 @@ namespace PenEngine
 		catch (const CoreApplicationCommandLineException& e)
 		{
 			// `--help` → 0（正常结束）；参数错误 → 1
-			std::println("{}", e.Text());
+			// 帮助文本是「用户要的输出」而非诊断，仍直接写 stdout；
+			// 参数错误是启动期故障，走日志（Terminal 下也可见，且会落到日志文件）
+			if (e.SuccessExit())
+				std::println("{}", e.Text());
+			else
+				PENFRAMEWORK_LOG_ERROR("{}", e.Text());
+
 			return e.SuccessExit() ? 0 : 1;
 		}
+		catch (const Exception& e)
+		{
+			// I1「其他异常按原样向上传播，不静默吞掉」保持不变：只先记一条带栈的 Critical，再原样抛出。
+			// 栈直接复用异常里已捕获的那份（ThrowException 采集），不再 current() 一次，省一次 0.1 ms 级开销
+			Logger::GetInstance().LogWithStacktrace(LoggerLevel::Critical, e.Stacktrace(),
+				"未处理异常 [{}] {}", e.ExceptionType(), e.Detail());
+			throw;
+		}
+	}
+
+	bool CoreApplication::InitializeLogger()
+	{
+		// 日志路径固定为「可执行文件目录 / Logs / PenFramework.log」：它不是配置项
+		// （不进 ApplicationConfiguration.json），因此可以在解析命令行之前就就绪 ——
+		// 命令行非法这类早期错误也能留下记录。父目录不存在由文件后端自行创建。
+		LoggerConfig config;
+		config.FilePath = Path::GetApplicationPath() / "Logs" / "PenFramework.log";
+
+		if (auto result = Logger::GetInstance().Initialize(config); !result)
+		{
+			// 日志器起不来不阻断启动：Warn 以上仍有 stderr 兜底（见 Logger::ShouldLog）。
+			// 此刻不能用日志宏报告这件事 —— 后端没起来
+			std::println(stderr, "[Log] 日志器初始化失败（错误码 {}），本次运行不写日志文件",
+				static_cast<U32>(result.error()));
+			return false;
+		}
+
+		return true;
 	}
 
 	void CoreApplication::ApplyConfiguration()
@@ -167,12 +206,13 @@ namespace PenEngine
 #endif // PENFRAMEWORK_OS_WIN32
 
 		// 把生效配置连同来源层输出一次：三层优先级的唯一可观察证据就是这里。
-		// Terminal 构建走 stdout；Native 没有控制台，改用信息框（否则配置生效与否完全不可见）。
+		// 走日志器：Terminal 构建有彩色控制台 sink，Native 无控制台则走调试器输出 + 日志文件，
+		// 因此「配置是否生效」在两种形态下都可见。
 		if (!m_config.FileLoaded())
-			std::printf("[Config] 配置文件未加载：%s\n", m_config.ConfigFilePath().Data());
+			PENFRAMEWORK_LOG_WARN("[Config] 配置文件未加载：{}", m_config.ConfigFilePath());
 
 		for (const String& warning : m_config.ParseWarnings())
-			std::printf("[Config] %s\n", warning.Data());
+			PENFRAMEWORK_LOG_WARN("[Config] {}", warning);
 
 		String summary;
 
@@ -217,14 +257,7 @@ namespace PenEngine
 		summary += m_applicationData.OSVersion;
 		summary += "    [系统]\n";
 
-		std::printf("[Config] 生效配置（命令行 > 配置文件 > 默认值）：\n%s", summary.Data());
-
-#ifdef PENFRAMEWORK_OS_WIN32
-		// 仅 Native 构建需要弹窗：它没有控制台，stdout 无处可看
-		#ifndef PENFRAMEWORK_BUILD_TERMINAL
-		MessageBoxW(nullptr, summary.ConvertToString<wchar_t>().Data(), L"PenFramework 启动配置", MB_OK | MB_ICONINFORMATION);
-		#endif // !PENFRAMEWORK_BUILD_TERMINAL
-#endif // PENFRAMEWORK_OS_WIN32
+		PENFRAMEWORK_LOG_INFO("[Config] 生效配置（命令行 > 配置文件 > 默认值）：\n{}", summary);
 	}
 
 	int CoreApplication::Exec()

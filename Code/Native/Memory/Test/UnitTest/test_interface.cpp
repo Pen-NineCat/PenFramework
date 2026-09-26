@@ -1,4 +1,4 @@
-// File /Native/Memory/tests/test_interface.cpp
+// File /Native/Memory/Test/UnitTest/test_interface.cpp
 //
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 - Present Pen-NineCat(PenNineCat) https://github.com/Pen-NineCat
@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "MiniTest.h"
-#include "../Globals.hpp"
+#include "../../Globals.hpp"
 
 using namespace PenMemory;
 

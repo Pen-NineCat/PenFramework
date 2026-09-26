@@ -5,7 +5,7 @@
 .DESCRIPTION
     PenMemory lives at PenFramework/Code/Native/Memory and is normally built as
     PenMemory.dll by the root CMakeLists.txt (add_subdirectory), with tests
-    enabled by the PEN_MEMORY_BUILD_TESTS option.  This script is the standalone
+    enabled by the PENFRAMEWORK_BUILD_TESTS option.  This script is the standalone
     Windows/MSVC path: it compiles the sources directly with cl.exe, using
     vcvars64.bat (located through vswhere), and does not go through CMake.
     Use -Debug to build with assertions enabled (/Od /MDd, NDEBUG undefined).
@@ -62,15 +62,15 @@ $libSources = @(
     'OSMemory.cpp'
 )
 $tests = [ordered]@{
-    'test_sizemap'     = @('tests\test_sizemap.cpp')
-    'test_pagecache'   = @('tests\test_pagecache.cpp')
-    'test_centralcache'= @('tests\test_centralcache.cpp')
-    'test_threadcache' = @('tests\test_threadcache.cpp')
-    'test_interface'   = @('tests\test_interface.cpp')
-    'test_override'    = @('tests\test_override.cpp', '..\Engine\Memory\MemoryOperator.cpp')
+    'test_sizemap'     = @('Test\UnitTest\test_sizemap.cpp')
+    'test_pagecache'   = @('Test\UnitTest\test_pagecache.cpp')
+    'test_centralcache'= @('Test\UnitTest\test_centralcache.cpp')
+    'test_threadcache' = @('Test\UnitTest\test_threadcache.cpp')
+    'test_interface'   = @('Test\UnitTest\test_interface.cpp')
+    'test_override'    = @('Test\UnitTest\test_override.cpp', '..\Engine\Memory\MemoryOperator.cpp')
 }
 $benchmarks = [ordered]@{
-    'benchmark'        = @('tests\benchmark.cpp')
+    'benchmark'        = @('Test\Benchmark\benchmark.cpp')
 }
 
 if ($Debug) {

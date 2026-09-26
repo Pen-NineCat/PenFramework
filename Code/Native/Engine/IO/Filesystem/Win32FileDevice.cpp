@@ -19,27 +19,27 @@ namespace PenEngine
 	namespace FileDeviceDetail
 	{
 		/// @brief 把 Win32 错误码映射为设备错误码
-		[[nodiscard]] Win32FileDevice::OperationResult MapWin32Error(DWORD error) noexcept
+		[[nodiscard]] IODeviceOperationResult MapWin32Error(DWORD error) noexcept
 		{
 			switch (error)
 			{
 				case ERROR_DISK_FULL:
 				case ERROR_HANDLE_DISK_FULL:
-					return Win32FileDevice::OperationResult::DeviceFull;
+					return IODeviceOperationResult::BufferFull;
 				case ERROR_ACCESS_DENIED:
-					return Win32FileDevice::OperationResult::AccessDenied;
+					return IODeviceOperationResult::AccessDenied;
 				case ERROR_SHARING_VIOLATION:
-					return Win32FileDevice::OperationResult::SharingViolation;
+					return IODeviceOperationResult::SharingViolation;
 				case ERROR_NOT_ENOUGH_MEMORY:
 				case ERROR_OUTOFMEMORY:
-					return Win32FileDevice::OperationResult::OSFailure;
+					return IODeviceOperationResult::OSFailure;
 				default:
-					return Win32FileDevice::OperationResult::IOFailure;
+					return IODeviceOperationResult::IOFailure;
 			}
 		}
 
 		/// @brief 该错误是否表示"读到文件末尾"
-		[[nodiscard]] bool IsEndOfFileError(DWORD error) noexcept
+		[[nodiscard]] bool IsStreamEndError(DWORD error) noexcept
 		{
 			return error == ERROR_HANDLE_EOF;
 		}
@@ -109,16 +109,16 @@ namespace PenEngine
 			return RemoveDirectoryW(nativePath.c_str()) != FALSE;
 		}
 	}
-	Win32FileDevice::OperationResult Win32FileDevice::Open(const Path& path, ModeFlag mode)
+	IODeviceOperationResult Win32FileDevice::Open(const Path& path, ModeFlag mode)
 	{
-		if (m_open && Close() != OperationResult::Success)
-			return OperationResult::CloseFailure;
+		if (m_open && Close() != IODeviceOperationResult::Success)
+			return IODeviceOperationResult::IOFailure;
 
 		if (mode == Mode::None)
-			return OperationResult::InvalidMode;
+			return IODeviceOperationResult::InvalidMode;
 
 		if (path.Empty())
-			return OperationResult::InvalidArgument;
+			return IODeviceOperationResult::InvalidArgument;
 
 		// 保存目标路径：后续 CreateFile 与目录操作均以 m_path 为准
 		m_path = path;
@@ -167,7 +167,7 @@ namespace PenEngine
 			{
 				m_overlapEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
 				if (m_overlapEvent == nullptr)
-					return OperationResult::OSFailure;
+					return IODeviceOperationResult::OSFailure;
 			}
 		}
 
@@ -178,19 +178,19 @@ namespace PenEngine
 			{
 				case ERROR_FILE_NOT_FOUND:
 				case ERROR_PATH_NOT_FOUND:
-					return OperationResult::TargetNotFound;
+					return IODeviceOperationResult::TargetNotFound;
 				case ERROR_ACCESS_DENIED:
-					return OperationResult::AccessDenied;
+					return IODeviceOperationResult::AccessDenied;
 				case ERROR_SHARING_VIOLATION:
-					return OperationResult::SharingViolation;
+					return IODeviceOperationResult::SharingViolation;
 				case ERROR_INVALID_PARAMETER:
-					return OperationResult::InvalidMode;
+					return IODeviceOperationResult::InvalidMode;
 				case ERROR_INVALID_NAME:
-					return OperationResult::InvalidArgument;
+					return IODeviceOperationResult::InvalidArgument;
 				case ERROR_FILE_EXISTS:
-					return OperationResult::TargetAlreadyExists;
+					return IODeviceOperationResult::TargetAlreadyExists;
 				default:
-					return OperationResult::UnknownError;
+					return IODeviceOperationResult::UnknownError;
 			}
 		}
 
@@ -204,7 +204,7 @@ namespace PenEngine
 			{
 				CloseHandle(m_handle.Win32Handle);
 				m_handle.Win32Handle = nullptr;
-				return OperationResult::IOFailure;
+				return IODeviceOperationResult::IOFailure;
 			}
 		}
 
@@ -216,7 +216,7 @@ namespace PenEngine
 			{
 				CloseHandle(m_handle.Win32Handle);
 				m_handle.Win32Handle = nullptr;
-				return OperationResult::IOFailure;
+				return IODeviceOperationResult::IOFailure;
 			}
 		}
 
@@ -227,19 +227,19 @@ namespace PenEngine
 		m_open = true;
 		m_mode = mode;
 
-		return OperationResult::Success;
+		return IODeviceOperationResult::Success;
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::Open(FILE* handle, ModeFlag mode)
+	IODeviceOperationResult Win32FileDevice::Open(FILE* handle, ModeFlag mode)
 	{
-		if (m_open && Close() != OperationResult::Success)
-			return OperationResult::CloseFailure;
+		if (m_open && Close() != IODeviceOperationResult::Success)
+			return IODeviceOperationResult::IOFailure;
 
 		if (mode == Mode::None || mode & Mode::EnableAsyncOperation)
-			return OperationResult::InvalidMode;
+			return IODeviceOperationResult::InvalidMode;
 
 		if (handle == nullptr)
-			return OperationResult::InvalidArgument;
+			return IODeviceOperationResult::InvalidArgument;
 
 		m_buffer.Clear();
 
@@ -249,29 +249,29 @@ namespace PenEngine
 		m_mode = mode;
 		m_open = true;
 
-		return OperationResult::Success;
+		return IODeviceOperationResult::Success;
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::Close() noexcept
+	IODeviceOperationResult Win32FileDevice::Close() noexcept
 	{
 		if (!m_open)
-			return OperationResult::Success;
+			return IODeviceOperationResult::Success;
 
 		if (m_working)
-			return OperationResult::AsyncTaskRunning;
+			return IODeviceOperationResult::AsyncTaskRunning;
 
 		// 刷新前台缓冲区，将尚未落盘的数据同步写入。
 		// 此处不修改 m_open：Flush 内部需要看到仍然打开的状态。
 		if (!m_buffer.Empty())
 		{
-			if (OperationResult res = Flush(); res != OperationResult::Success)
+			if (IODeviceOperationResult res = Flush(); res != IODeviceOperationResult::Success)
 				return res;
 		}
 
 		if (m_handleType == FileHandleType::Win)
 		{
 			if (m_handle.Win32Handle != nullptr && m_handle.Win32Handle != INVALID_HANDLE_VALUE && CloseHandle(m_handle.Win32Handle) == FALSE)
-				return OperationResult::CloseFailure;
+				return IODeviceOperationResult::IOFailure;
 
 			m_handle.Win32Handle = nullptr;
 			m_handleType = FileHandleType::Invalid;
@@ -285,7 +285,7 @@ namespace PenEngine
 				{
 					m_handle.PxHandle = nullptr;
 					m_handleType = FileHandleType::Invalid;
-					return OperationResult::CloseFailure;
+					return IODeviceOperationResult::IOFailure;
 				}
 
 				m_handle.PxHandle = nullptr;
@@ -302,43 +302,43 @@ namespace PenEngine
 		}
 
 		m_open = false;
-		return OperationResult::Success;
+		return IODeviceOperationResult::Success;
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::WriteFrom(const U8* buf, Usize size)
+	IODeviceOperationResult Win32FileDevice::WriteFrom(const U8* buf, Usize size)
 	{
 		if (buf == nullptr)
-			return OperationResult::InvalidArgument;
+			return IODeviceOperationResult::InvalidArgument;
 
 		if (!IsOpen())
-			return OperationResult::FileNotOpen;
+			return IODeviceOperationResult::FileNotOpen;
 
 		if (m_working)
-			return OperationResult::AsyncTaskRunning;
+			return IODeviceOperationResult::AsyncTaskRunning;
 
 		return WriteFromInternal(buf, size);
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::WriteFromInternal(const U8* buf, Usize size)
+	IODeviceOperationResult Win32FileDevice::WriteFromInternal(const U8* buf, Usize size)
 	{
 		if (buf == nullptr)
-			return OperationResult::InvalidArgument;
+			return IODeviceOperationResult::InvalidArgument;
 
 		if (!IsOpen())
-			return OperationResult::FileNotOpen;
+			return IODeviceOperationResult::FileNotOpen;
 
 		if (!(m_mode & Mode::CanWrite))
-			return OperationResult::InvalidMode;
+			return IODeviceOperationResult::InvalidMode;
 
 		if (size == 0)
-			return OperationResult::Success;
+			return IODeviceOperationResult::Success;
 
 		const bool useBuffer = !(m_mode & Mode::DontUseBuffer);
 
 		if (!useBuffer || size > m_syncBufferSize)
 		{
 			// 直写：先确保先前缓冲的数据先于本次数据落盘
-			if (OperationResult res = FlushInternal(); res != OperationResult::Success)
+			if (IODeviceOperationResult res = FlushInternal(); res != IODeviceOperationResult::Success)
 				return res;
 
 			return InternalSyncWrite(buf, size);
@@ -347,63 +347,33 @@ namespace PenEngine
 		// 需要先判断合并后是否会越过缓冲区上限，否则会出现"先刷新再写入"导致的双次系统调用
 		if (m_buffer.Size() + size > m_syncBufferSize)
 		{
-			if (OperationResult res = FlushInternal(); res != OperationResult::Success)
+			if (IODeviceOperationResult res = FlushInternal(); res != IODeviceOperationResult::Success)
 				return res;
 		}
 
 		m_buffer.Reserve(m_buffer.Size() + size);
 		m_buffer.Append(buf, size);
 
-		return OperationResult::Success;
+		return IODeviceOperationResult::Success;
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::WriteFrom(const IOutputBuffer& buf, Usize size)
-	{
-		return WriteFrom(buf.Data(), std::min(buf.Size(), size));
-	}
-
-	Win32FileDevice::OperationResult Win32FileDevice::WriteFrom(const ByteArray& buf, Usize size)
-	{
-		return WriteFrom(buf.Data(), std::min(buf.Size(), size));
-	}
-
-	Win32FileDevice::OperationResult Win32FileDevice::WriteAllFrom(const IOutputBuffer& buf) noexcept
-	{
-		if (!IsOpen())
-			return OperationResult::FileNotOpen;
-
-		if (buf.Data() == nullptr)
-			return OperationResult::InvalidArgument;
-
-		return WriteFrom(buf.Data(), buf.Size());
-	}
-
-	Win32FileDevice::OperationResult Win32FileDevice::WriteAllFrom(const ByteArray& buf) noexcept
-	{
-		if (!IsOpen())
-			return OperationResult::FileNotOpen;
-
-		return WriteFrom(buf.Data(), buf.Size());
-	}
-
-	std::expected<Usize, Win32FileDevice::OperationResult> Win32FileDevice::ReadTo(U8* buf, Usize size)
+	std::expected<Usize, IODeviceOperationResult> Win32FileDevice::ReadTo(U8* buf, Usize size)
 	{
 		if (buf == nullptr)
-			return std::unexpected(OperationResult::InvalidArgument);
+			return std::unexpected(IODeviceOperationResult::InvalidArgument);
 
-		// 原先此处判断写反，导致文件打开时反而返回 FileNotOpen
 		if (!IsOpen())
-			return std::unexpected(OperationResult::FileNotOpen);
+			return std::unexpected(IODeviceOperationResult::FileNotOpen);
 
 		if (m_working)
-			return std::unexpected(OperationResult::AsyncTaskRunning);
+			return std::unexpected(IODeviceOperationResult::AsyncTaskRunning);
 
 		if (!(m_mode & Mode::CanRead))
-			return std::unexpected(OperationResult::InvalidMode);
+			return std::unexpected(IODeviceOperationResult::InvalidMode);
 
 		// 读取前确保所有已缓冲数据都已落盘，避免读到磁盘上的旧数据
 		if (!m_buffer.Empty())
-			if (OperationResult flushResult = Flush(); flushResult != OperationResult::Success)
+			if (IODeviceOperationResult flushResult = Flush(); flushResult != IODeviceOperationResult::Success)
 				return std::unexpected(flushResult);
 
 		if (size == 0)
@@ -412,103 +382,45 @@ namespace PenEngine
 		return InternalSyncRead(buf, size);
 	}
 
-	std::expected<Usize, Win32FileDevice::OperationResult> Win32FileDevice::ReadTo(IInputBuffer& buf, Usize size)
+	std::expected<Usize, IODeviceOperationResult> Win32FileDevice::ReadAllTo(IInputBuffer& buf)
 	{
-		if (size == 0)
-			return 0;
-
-		// PrepareBuffer 必须由调用方在尺寸校验通过后进行，否则拿不到可写区间
-		U8* destination = buf.PrepareBuffer(size);
-		if (destination == nullptr)
-			return std::unexpected(OperationResult::InvalidArgument);
-
-		std::expected<Usize, OperationResult> res = ReadTo(destination, size);
-		if (res.has_value())
-			buf.SetActualBufferLen(res.value());
-
-		return res;
+		std::expected<Usize, IODeviceOperationResult> fileSize = FileSize();
+		if (!fileSize.has_value())
+			return std::unexpected(fileSize.error());
+			
+		return ReadTo(buf, fileSize.value());
 	}
 
-	std::expected<Usize, Win32FileDevice::OperationResult> Win32FileDevice::ReadTo(ByteArray& buf, Usize size)
+	std::expected<Usize, IODeviceOperationResult> Win32FileDevice::ReadAllTo(ByteArray& buf)
 	{
-		if (size == 0)
-			return 0;
-
-		// 预留后再取指针，保证读取期间不会因扩容而失效
-		buf.Resize(size);
-
-		std::expected<Usize, OperationResult> res = ReadTo(buf.Data(), size);
-		if (!res.has_value())
-			return res;
-
-		buf.Resize(res.value());
-		return res;
-	}
-
-	std::expected<Usize, Win32FileDevice::OperationResult> Win32FileDevice::ReadTo(String& buf, Usize size)
-	{
-		if (size == 0)
-			return 0;
-
-		buf.Reserve(size);
-		buf.Resize(size);
-
-		std::expected<Usize, OperationResult> res = ReadTo(reinterpret_cast<U8*>(buf.Data()), size);
-		if (!res.has_value())
-			return res;
-
-		buf.Resize(res.value());
-		return res;
-	}
-
-	std::expected<Usize, Win32FileDevice::OperationResult> Win32FileDevice::ReadAllTo(IInputBuffer& buf)
-	{
-		std::expected<Usize, OperationResult> fileSize = FileSize();
+		std::expected<Usize, IODeviceOperationResult> fileSize = FileSize();
 		if (!fileSize.has_value())
 			return std::unexpected(fileSize.error());
 
 		return ReadTo(buf, fileSize.value());
 	}
 
-	std::expected<Usize, Win32FileDevice::OperationResult> Win32FileDevice::ReadAllTo(ByteArray& buf)
-	{
-		std::expected<Usize, OperationResult> fileSize = FileSize();
-		if (!fileSize.has_value())
-			return std::unexpected(fileSize.error());
-
-		return ReadTo(buf, fileSize.value());
-	}
-
-	std::expected<Usize, Win32FileDevice::OperationResult> Win32FileDevice::ReadAllTo(String& buf)
-	{
-		std::expected<Usize, OperationResult> fileSize = FileSize();
-		if (!fileSize.has_value())
-			return std::unexpected(fileSize.error());
-
-		return ReadTo(buf, fileSize.value());
-	}
-
-	Win32FileDevice::OperationResult Win32FileDevice::Flush() noexcept
+	IODeviceOperationResult Win32FileDevice::Flush() noexcept
 	{
 		return FlushInternal();
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::FlushInternal() noexcept
+	IODeviceOperationResult Win32FileDevice::FlushInternal() noexcept
 	{
 		if (!m_open)
-			return OperationResult::FileNotOpen;
+			return IODeviceOperationResult::FileNotOpen;
 
 		if (m_working)
-			return OperationResult::AsyncTaskRunning;
+			return IODeviceOperationResult::AsyncTaskRunning;
 
-		// 类似于以Mode CanWrite但是传入仅'r'的错误FILE*，会返回PxHandleNotSupport
+		// 类似于以Mode CanWrite但是传入仅'r'的错误FILE*，会返回InvalidMode
 		if (!(m_mode & Mode::CanWrite))
-			return OperationResult::InvalidMode;
+			return IODeviceOperationResult::InvalidMode;
 
 		if (m_buffer.Empty())
-			return OperationResult::Success;
+			return IODeviceOperationResult::Success;
 
-		if (OperationResult ret = InternalSyncWrite(m_buffer.Data(), m_buffer.Size()); ret != OperationResult::Success)
+		if (IODeviceOperationResult ret = InternalSyncWrite(m_buffer.Data(), m_buffer.Size()); ret != IODeviceOperationResult::Success)
 			return ret;
 
 		if (m_handleType == FileHandleType::Px && m_handle.PxHandle != nullptr && fflush(m_handle.PxHandle) != 0)
@@ -517,14 +429,14 @@ namespace PenEngine
 			switch (errno)
 			{
 				case EBADF:
-					return OperationResult::PxHandleNotSupport;
+					return IODeviceOperationResult::InvalidMode;
 				default:
-					return OperationResult::IOFailure;
+					return IODeviceOperationResult::IOFailure;
 			}
 		}
 
 		m_buffer.Clear();
-		return OperationResult::Success;
+		return IODeviceOperationResult::Success;
 	}
 
 	bool Win32FileDevice::IsOpen() const noexcept
@@ -644,8 +556,8 @@ namespace PenEngine
 			block->State = OverlapBlockState::Finished;
 		}
 
-		if (m_error == OperationResult::Success)
-			m_error = OperationResult::AsyncTaskCancel;
+		if (m_error == IODeviceOperationResult::Success)
+			m_error = IODeviceOperationResult::AsyncTaskCancelled;
 
 		m_collectIndex = m_launchedCount;
 		return true;
@@ -671,27 +583,27 @@ namespace PenEngine
 		return true;
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::OverlapBatch::Launch(bool isWrite, HANDLE handle,
+	IODeviceOperationResult Win32FileDevice::OverlapBatch::Launch(bool isWrite, HANDLE handle,
 		const U8* buffer, Usize totalSize, U64 beginOffset, Usize& outLaunchedSize) noexcept
 	{
 		outLaunchedSize = 0;
 
 		if (handle == nullptr || handle == INVALID_HANDLE_VALUE)
-			return OperationResult::FileNotOpen;
+			return IODeviceOperationResult::FileNotOpen;
 
 		if (totalSize == 0)
-			return OperationResult::Success;
+			return IODeviceOperationResult::Success;
 
 		DEBUG_VERIFY_REPORT(m_collectIndex >= m_launchedCount, "OverlapBatch reused before CollectResult");
 
 		if (!AcquireBlockEvents())
-			return OperationResult::OSFailure;
+			return IODeviceOperationResult::OSFailure;
 
 		m_targetHandle = handle;
 		m_isWrite = isWrite;
 		m_eofReached = false;
 		m_collectIndex = 0;
-		m_error = OperationResult::Success;
+		m_error = IODeviceOperationResult::Success;
 
 		const Usize blockCount = std::min(MAX_ASYNC_OVERLAP_BLOCK,
 			(totalSize + MaxAsyncBlockSize - 1) / MaxAsyncBlockSize);
@@ -730,12 +642,12 @@ namespace PenEngine
 				const DWORD error = GetLastError();
 
 				// 读到文件末尾：该块未产生结果，由CollectResult按EOF处理
-				if (!isWrite && FileDeviceDetail::IsEndOfFileError(error))
+				if (!isWrite && FileDeviceDetail::IsStreamEndError(error))
 				{
 					block->State = OverlapBlockState::Finished;
 					m_eofReached = true;
 					m_launchedCount = index; // 本块不计入需要收集的块
-					return OperationResult::Success;
+					return IODeviceOperationResult::Success;
 				}
 
 				if (error == ERROR_IO_PENDING)
@@ -762,10 +674,10 @@ namespace PenEngine
 			offset += blockSize;
 		}
 
-		return OperationResult::Success;
+		return IODeviceOperationResult::Success;
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::OverlapBatch::CollectResult(HANDLE handle,
+	IODeviceOperationResult Win32FileDevice::OverlapBatch::CollectResult(HANDLE handle,
 		Usize& outTransferredSize) noexcept
 	{
 		outTransferredSize = 0;
@@ -792,11 +704,11 @@ namespace PenEngine
 				{
 					const DWORD error = GetLastError();
 
-					if (!m_isWrite && FileDeviceDetail::IsEndOfFileError(error))
+					if (!m_isWrite && FileDeviceDetail::IsStreamEndError(error))
 					{
 						m_eofReached = true;
 					}
-					else if (m_error == OperationResult::Success)
+					else if (m_error == IODeviceOperationResult::Success)
 					{
 						m_error = FileDeviceDetail::MapWin32Error(error);
 					}
@@ -824,23 +736,23 @@ namespace PenEngine
 
 		m_collectIndex = m_launchedCount;
 
-		if (m_error != OperationResult::Success)
+		if (m_error != IODeviceOperationResult::Success)
 			return m_error;
 
 		if (m_eofReached && !m_isWrite)
-			return OperationResult::EndOfFile;
+			return IODeviceOperationResult::StreamEnd;
 
-		return OperationResult::Success;
+		return IODeviceOperationResult::Success;
 	}
 
 	// ------------------------------------------------------------------
 	// 异步接口
 	// ------------------------------------------------------------------
 
-	CoroutineTask<Win32FileDevice::OperationResult> Win32FileDevice::FlushBeforeAsyncOperation()
+	CoroutineTask<IODeviceOperationResult> Win32FileDevice::FlushBeforeAsyncOperation()
 	{
 		if (m_buffer.Empty())
-			co_return OperationResult::Success;
+			co_return IODeviceOperationResult::Success;
 
 		// 小缓冲同步刷、大缓冲异步刷：避免为几KB数据付一次协程往返
 		if (m_buffer.Size() <= m_syncBufferSize)
@@ -849,16 +761,16 @@ namespace PenEngine
 		co_return co_await AsyncFlush();
 	}
 
-	CoroutineTask<Win32FileDevice::OperationResult> Win32FileDevice::InternalAsyncWrite(uintptr_t handleValue,
+	CoroutineTask<IODeviceOperationResult> Win32FileDevice::InternalAsyncWrite(uintptr_t handleValue,
 		const U8* data, Usize size, U64 beginOffset, Usize& outWrittenSize) const
 	{
 		outWrittenSize = 0;
 
 		if (size == 0)
-			co_return OperationResult::Success;
+			co_return IODeviceOperationResult::Success;
 
 		const HANDLE handle = reinterpret_cast<HANDLE>(handleValue);
-		OperationResult result = OperationResult::Success;
+		IODeviceOperationResult result = IODeviceOperationResult::Success;
 		Usize written = 0;
 
 		while (written < size)
@@ -868,7 +780,7 @@ namespace PenEngine
 			Usize launched = 0;
 			result = batch.Launch(true, handle, data + written, size - written, beginOffset + written, launched);
 
-			if (result != OperationResult::Success)
+			if (result != IODeviceOperationResult::Success)
 				break;
 
 			// 阶段一由调度器通过IsReady驱动；恢复后进入阶段二
@@ -878,13 +790,13 @@ namespace PenEngine
 			result = batch.CollectResult(handle, transferred);
 			written += transferred;
 
-			if (result != OperationResult::Success)
+			if (result != IODeviceOperationResult::Success)
 				break;
 
 			if (transferred == 0)
 			{
 				// 写方向不应出现0字节成功，防御性终止
-				result = OperationResult::IOFailure;
+				result = IODeviceOperationResult::IOFailure;
 				break;
 			}
 		}
@@ -893,76 +805,76 @@ namespace PenEngine
 		co_return result;
 	}
 
-	CoroutineTask<Win32FileDevice::OperationResult> Win32FileDevice::AsyncFlush()
+	CoroutineTask<IODeviceOperationResult> Win32FileDevice::AsyncFlush()
 	{
 		// m_working 由协程体置位/清位：一次性驱动到完成时也能正确恢复现场
 		const bool previousWorking = std::exchange(m_working, true);
 		ResourceScopeGuard workingGuard([this, previousWorking]() noexcept { m_working = previousWorking; });
 
 		if (!IsOpen())
-			co_return OperationResult::FileNotOpen;
+			co_return IODeviceOperationResult::FileNotOpen;
 
 		if (!(m_mode & Mode::CanWrite))
-			co_return OperationResult::InvalidMode;
+			co_return IODeviceOperationResult::InvalidMode;
 
 		if (!IsAsyncMode())
-			co_return OperationResult::InvalidMode;
+			co_return IODeviceOperationResult::InvalidMode;
 
 		if (m_buffer.Empty())
-			co_return OperationResult::Success;
+			co_return IODeviceOperationResult::Success;
 
 		const HANDLE handle = m_handleType == FileHandleType::Win ? m_handle.Win32Handle : nullptr;
 		if (handle == nullptr || handle == INVALID_HANDLE_VALUE)
-			co_return OperationResult::InvalidMode;
+			co_return IODeviceOperationResult::InvalidMode;
 
-		const std::expected<U64, OperationResult> posResult = TellCurrent();
+		const std::expected<U64, IODeviceOperationResult> posResult = TellCurrent();
 		if (!posResult.has_value())
 			co_return posResult.error();
 
 		Usize written = 0;
-		const OperationResult writeResult = co_await InternalAsyncWrite(reinterpret_cast<uintptr_t>(handle),
+		const IODeviceOperationResult writeResult = co_await InternalAsyncWrite(reinterpret_cast<uintptr_t>(handle),
 			m_buffer.Data(), m_buffer.Size(), posResult.value(), written);
 
-		if (writeResult != OperationResult::Success)
+		if (writeResult != IODeviceOperationResult::Success)
 			co_return writeResult;
 
 		if (written != m_buffer.Size())
-			co_return OperationResult::IOFailure;
+			co_return IODeviceOperationResult::IOFailure;
 
-		if (const OperationResult seekResult = SeekCurrent(posResult.value() + written); seekResult != OperationResult::Success)
+		if (const IODeviceOperationResult seekResult = SeekCurrent(posResult.value() + written); seekResult != IODeviceOperationResult::Success)
 			co_return seekResult;
 
 		m_buffer.Clear();
-		co_return OperationResult::Success;
+		co_return IODeviceOperationResult::Success;
 	}
 
-	CoroutineTask<Win32FileDevice::OperationResult> Win32FileDevice::AsyncWriteFromInternal(const U8* buf,
+	CoroutineTask<IODeviceOperationResult> Win32FileDevice::AsyncWriteFromInternal(const U8* buf,
 		Usize size, bool copyToInternal)
 	{
 		if (buf == nullptr)
-			co_return OperationResult::InvalidArgument;
+			co_return IODeviceOperationResult::InvalidArgument;
 
 		if (size == 0)
-			co_return OperationResult::Success;
+			co_return IODeviceOperationResult::Success;
 
 		const HANDLE handle = m_handleType == FileHandleType::Win ? m_handle.Win32Handle : nullptr;
 		if (handle == nullptr || handle == INVALID_HANDLE_VALUE)
-			co_return OperationResult::InvalidMode;
+			co_return IODeviceOperationResult::InvalidMode;
 
 		// 能整体放进内部缓冲区时优先缓冲：避免为一次性大数据撑大缓冲区容量
 		if (copyToInternal && m_buffer.Size() + size <= m_syncBufferSize)
 		{
-			if (const OperationResult appendResult = WriteFromInternal(buf, size); appendResult != OperationResult::Success)
+			if (const IODeviceOperationResult appendResult = WriteFromInternal(buf, size); appendResult != IODeviceOperationResult::Success)
 				co_return appendResult;
 
 			co_return co_await AsyncFlush();
 		}
 
 		// 1) 先把内部积压数据落盘，保证写入顺序
-		if (const OperationResult flushResult = co_await FlushBeforeAsyncOperation(); flushResult != OperationResult::Success)
+		if (const IODeviceOperationResult flushResult = co_await FlushBeforeAsyncOperation(); flushResult != IODeviceOperationResult::Success)
 			co_return flushResult;
 
-		const std::expected<U64, OperationResult> posResult = TellCurrent();
+		const std::expected<U64, IODeviceOperationResult> posResult = TellCurrent();
 		if (!posResult.has_value())
 			co_return posResult.error();
 
@@ -974,50 +886,50 @@ namespace PenEngine
 			m_buffer.Append(buf, size);
 
 			Usize written = 0;
-			const OperationResult writeResult = co_await InternalAsyncWrite(
+			const IODeviceOperationResult writeResult = co_await InternalAsyncWrite(
 				reinterpret_cast<uintptr_t>(handle), m_buffer.Data(), m_buffer.Size(), startOffset, written);
 
-			if (writeResult != OperationResult::Success)
+			if (writeResult != IODeviceOperationResult::Success)
 				co_return writeResult;
 
 			if (written != m_buffer.Size())
-				co_return OperationResult::IOFailure;
+				co_return IODeviceOperationResult::IOFailure;
 
-			if (const OperationResult seekResult = SeekCurrent(startOffset + written); seekResult != OperationResult::Success)
+			if (const IODeviceOperationResult seekResult = SeekCurrent(startOffset + written); seekResult != IODeviceOperationResult::Success)
 				co_return seekResult;
 
 			m_buffer.Clear();
-			co_return OperationResult::Success;
+			co_return IODeviceOperationResult::Success;
 		}
 
 		// copyToInternal == false：直接引用调用方内存，调用方需保证其活到本任务完成
 		Usize written = 0;
-		const OperationResult writeResult = co_await InternalAsyncWrite(
+		const IODeviceOperationResult writeResult = co_await InternalAsyncWrite(
 			reinterpret_cast<uintptr_t>(handle), buf, size, startOffset, written);
 
-		if (writeResult != OperationResult::Success)
+		if (writeResult != IODeviceOperationResult::Success)
 			co_return writeResult;
 
 		if (written != size)
-			co_return OperationResult::IOFailure;
+			co_return IODeviceOperationResult::IOFailure;
 
 		co_return SeekCurrent(startOffset + written);
 	}
 
-	CoroutineTask<Win32FileDevice::OperationResult> Win32FileDevice::AsyncWriteFrom(const U8* buf, Usize size,
+	CoroutineTask<IODeviceOperationResult> Win32FileDevice::AsyncWriteFrom(const U8* buf, Usize size,
 		bool copyToInternal)
 	{
 		if (buf == nullptr)
-			co_return OperationResult::InvalidArgument;
+			co_return IODeviceOperationResult::InvalidArgument;
 
 		if (!IsOpen())
-			co_return OperationResult::FileNotOpen;
+			co_return IODeviceOperationResult::FileNotOpen;
 
 		if (!(m_mode & Mode::CanWrite))
-			co_return OperationResult::InvalidMode;
+			co_return IODeviceOperationResult::InvalidMode;
 
 		if (!IsAsyncMode())
-			co_return OperationResult::InvalidMode;
+			co_return IODeviceOperationResult::InvalidMode;
 
 		const bool previousWorking = std::exchange(m_working, true);
 		ResourceScopeGuard workingGuard([this, previousWorking]() noexcept { m_working = previousWorking; });
@@ -1025,53 +937,41 @@ namespace PenEngine
 		co_return co_await AsyncWriteFromInternal(buf, size, copyToInternal);
 	}
 
-	CoroutineTask<Win32FileDevice::OperationResult> Win32FileDevice::AsyncWriteFrom(const ByteArray& buf,
-		Usize size, bool copyToInternal)
-	{
-		return AsyncWriteFrom(buf.Data(), std::min(buf.Size(), size), copyToInternal);
-	}
-
-	CoroutineTask<Win32FileDevice::OperationResult> Win32FileDevice::AsyncWriteFrom(const IOutputBuffer& buf,
-		Usize size, bool copyToInternal)
-	{
-		return AsyncWriteFrom(buf.Data(), std::min(buf.Size(), size), copyToInternal);
-	}
-
-	CoroutineTask<Win32FileDevice::OperationResult> Win32FileDevice::AsyncWriteAllFrom(const ByteArray& buf)
+	CoroutineTask<IODeviceOperationResult> Win32FileDevice::AsyncWriteAllFrom(const ByteArray& buf)
 	{
 		return AsyncWriteFrom(buf.Data(), buf.Size(), true);
 	}
 
-	CoroutineTask<Win32FileDevice::OperationResult> Win32FileDevice::AsyncWriteAllFrom(const IOutputBuffer& buf)
+	CoroutineTask<IODeviceOperationResult> Win32FileDevice::AsyncWriteAllFrom(const IOutputBuffer& buf)
 	{
 		return AsyncWriteFrom(buf.Data(), buf.Size(), true);
 	}
 
-	CoroutineTask<std::expected<Usize, Win32FileDevice::OperationResult>> Win32FileDevice::AsyncReadToInternal(
+	CoroutineTask<std::expected<Usize, IODeviceOperationResult>> Win32FileDevice::AsyncReadToInternal(
 		U8* buf, Usize size)
 	{
 		if (buf == nullptr)
-			co_return std::unexpected(OperationResult::InvalidArgument);
+			co_return std::unexpected(IODeviceOperationResult::InvalidArgument);
 
 		if (size == 0)
 			co_return 0;
 
 		const HANDLE handle = m_handleType == FileHandleType::Win ? m_handle.Win32Handle : nullptr;
 		if (handle == nullptr || handle == INVALID_HANDLE_VALUE)
-			co_return std::unexpected(OperationResult::InvalidMode);
+			co_return std::unexpected(IODeviceOperationResult::InvalidMode);
 
 		// 1) 读取前先让积压数据落盘，避免读到磁盘上的旧数据
-		if (const OperationResult flushResult = co_await FlushBeforeAsyncOperation(); flushResult != OperationResult::Success)
+		if (const IODeviceOperationResult flushResult = co_await FlushBeforeAsyncOperation(); flushResult != IODeviceOperationResult::Success)
 			co_return std::unexpected(flushResult);
 
-		const std::expected<U64, OperationResult> posResult = TellCurrent();
+		const std::expected<U64, IODeviceOperationResult> posResult = TellCurrent();
 		if (!posResult.has_value())
 			co_return std::unexpected(posResult.error());
 
 		const U64 startOffset = posResult.value();
 
 		Usize totalRead = 0;
-		OperationResult result = OperationResult::Success;
+		IODeviceOperationResult result = IODeviceOperationResult::Success;
 
 		while (totalRead < size)
 		{
@@ -1080,21 +980,21 @@ namespace PenEngine
 			Usize launched = 0;
 			result = batch.Launch(false, handle, buf + totalRead, size - totalRead, startOffset + totalRead, launched);
 
-			if (result != OperationResult::Success)
+			if (result != IODeviceOperationResult::Success)
 				break;
 
 			// 阶段一由调度器通过IsReady驱动；恢复后进入阶段二
 			co_await batch;
 
 			Usize transferred = 0;
-			const OperationResult collectResult = batch.CollectResult(handle, transferred);
+			const IODeviceOperationResult collectResult = batch.CollectResult(handle, transferred);
 			totalRead += transferred;
 
 			// EOF只表示可以提前结束，不是错误
-			if (collectResult == OperationResult::EndOfFile)
+			if (collectResult == IODeviceOperationResult::StreamEnd)
 				break;
 
-			if (collectResult != OperationResult::Success)
+			if (collectResult != IODeviceOperationResult::Success)
 			{
 				result = collectResult;
 				break;
@@ -1104,30 +1004,30 @@ namespace PenEngine
 				break; // 未读到数据且无错误：视作EOF
 		}
 
-		if (result != OperationResult::Success)
+		if (result != IODeviceOperationResult::Success)
 			co_return std::unexpected(result);
 
 		// 推进内核文件指针：只有协程函数可以操作位置
-		if (const OperationResult seekResult = SeekCurrent(startOffset + totalRead); seekResult != OperationResult::Success)
+		if (const IODeviceOperationResult seekResult = SeekCurrent(startOffset + totalRead); seekResult != IODeviceOperationResult::Success)
 			co_return std::unexpected(seekResult);
 
 		co_return totalRead;
 	}
 
-	CoroutineTask<std::expected<Usize, Win32FileDevice::OperationResult>> Win32FileDevice::AsyncReadTo(U8* buf,
+	CoroutineTask<std::expected<Usize, IODeviceOperationResult>> Win32FileDevice::AsyncReadTo(U8* buf,
 		Usize size)
 	{
 		if (buf == nullptr)
-			co_return std::unexpected(OperationResult::InvalidArgument);
+			co_return std::unexpected(IODeviceOperationResult::InvalidArgument);
 
 		if (!IsOpen())
-			co_return std::unexpected(OperationResult::FileNotOpen);
+			co_return std::unexpected(IODeviceOperationResult::FileNotOpen);
 
 		if (!(m_mode & Mode::CanRead))
-			co_return std::unexpected(OperationResult::InvalidMode);
+			co_return std::unexpected(IODeviceOperationResult::InvalidMode);
 
 		if (!IsAsyncMode())
-			co_return std::unexpected(OperationResult::InvalidMode);
+			co_return std::unexpected(IODeviceOperationResult::InvalidMode);
 
 		const bool previousWorking = std::exchange(m_working, true);
 		ResourceScopeGuard workingGuard([this, previousWorking]() noexcept { m_working = previousWorking; });
@@ -1135,33 +1035,10 @@ namespace PenEngine
 		co_return co_await AsyncReadToInternal(buf, size);
 	}
 
-	CoroutineTask<std::expected<Usize, Win32FileDevice::OperationResult>> Win32FileDevice::AsyncReadTo(
-		ByteArray& buf, Usize size)
-	{
-		return AsyncReadTo(buf.Data(), std::min(buf.Size(), size));
-	}
-
-	CoroutineTask<std::expected<Usize, Win32FileDevice::OperationResult>> Win32FileDevice::AsyncReadTo(
-		IInputBuffer& buf, Usize size)
-	{
-		if (size == 0)
-			co_return 0;
-
-		U8* destination = buf.PrepareBuffer(size);
-		if (destination == nullptr)
-			co_return std::unexpected(OperationResult::InvalidArgument);
-
-		std::expected<Usize, OperationResult> result = co_await AsyncReadTo(destination, size);
-		if (result.has_value())
-			buf.SetActualBufferLen(result.value());
-
-		co_return result;
-	}
-
-	CoroutineTask<std::expected<Usize, Win32FileDevice::OperationResult>> Win32FileDevice::AsyncReadAllTo(
+	CoroutineTask<std::expected<Usize, IODeviceOperationResult>> Win32FileDevice::AsyncReadAllTo(
 		ByteArray& buf)
 	{
-		const std::expected<Usize, OperationResult> fileSize = FileSize();
+		const std::expected<Usize, IODeviceOperationResult> fileSize = FileSize();
 		if (!fileSize.has_value())
 			co_return std::unexpected(fileSize.error());
 
@@ -1169,75 +1046,75 @@ namespace PenEngine
 		co_return co_await AsyncReadTo(buf.Data(), fileSize.value());
 	}
 
-	CoroutineTask<std::expected<Usize, Win32FileDevice::OperationResult>> Win32FileDevice::AsyncReadAllTo(
+	CoroutineTask<std::expected<Usize, IODeviceOperationResult>> Win32FileDevice::AsyncReadAllTo(
 		IInputBuffer& buf)
 	{
-		const std::expected<Usize, OperationResult> fileSize = FileSize();
+		const std::expected<Usize, IODeviceOperationResult> fileSize = FileSize();
 		if (!fileSize.has_value())
 			co_return std::unexpected(fileSize.error());
 
 		co_return co_await AsyncReadTo(buf, fileSize.value());
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::SeekCurrent(U64 pos) const noexcept
+	IODeviceOperationResult Win32FileDevice::SeekCurrent(U64 pos) const noexcept
 	{
 		if (m_handleType != FileHandleType::Win)
-			return OperationResult::InvalidMode;
+			return IODeviceOperationResult::InvalidMode;
 
 		LARGE_INTEGER offset{ .QuadPart = static_cast<I64>(pos) };
 		if (!SetFilePointerEx(m_handle.Win32Handle, offset, nullptr, FILE_BEGIN))
-			return OperationResult::OSFailure;
+			return IODeviceOperationResult::OSFailure;
 
-		return OperationResult::Success;
+		return IODeviceOperationResult::Success;
 	}
 
-	std::expected<U64, Win32FileDevice::OperationResult> Win32FileDevice::TellCurrent() const noexcept
+	std::expected<U64, IODeviceOperationResult> Win32FileDevice::TellCurrent() const noexcept
 	{
 		if (m_handleType != FileHandleType::Win)
-			return std::unexpected(OperationResult::InvalidMode);
+			return std::unexpected(IODeviceOperationResult::InvalidMode);
 
 		LARGE_INTEGER zero{ .QuadPart = 0 };
 		LARGE_INTEGER currentPos{ .QuadPart = 0 };
 
 		if (!SetFilePointerEx(m_handle.Win32Handle, zero, &currentPos, FILE_CURRENT))
-			return std::unexpected(OperationResult::OSFailure);
+			return std::unexpected(IODeviceOperationResult::OSFailure);
 
 		return static_cast<U64>(currentPos.QuadPart);
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::Seek(U64 pos) noexcept
+	IODeviceOperationResult Win32FileDevice::Seek(U64 pos) noexcept
 	{
 		if (!m_open)
-			return OperationResult::FileNotOpen;
+			return IODeviceOperationResult::FileNotOpen;
 
 		if (m_working)
-			return OperationResult::AsyncTaskRunning;
+			return IODeviceOperationResult::AsyncTaskRunning;
 
 		if (m_handleType == FileHandleType::Win)
 		{
 			LARGE_INTEGER offset{ .QuadPart = static_cast<I64>(pos) };
 			// 指定 FILE_BEGIN 时 offset 会被视作无符号量
 			if (SetFilePointerEx(m_handle.Win32Handle, offset, nullptr, FILE_BEGIN))
-				return OperationResult::Success;
+				return IODeviceOperationResult::Success;
 
-			return OperationResult::OSFailure;
+			return IODeviceOperationResult::OSFailure;
 		}
 
 		if (m_handleType == FileHandleType::Px && m_handle.PxHandle != nullptr)
 			return fseek(m_handle.PxHandle, static_cast<long>(pos), SEEK_SET) == 0
-				? OperationResult::Success
-				: OperationResult::OSFailure;
+			? IODeviceOperationResult::Success
+			: IODeviceOperationResult::OSFailure;
 
-		return OperationResult::FileNotOpen;
+		return IODeviceOperationResult::FileNotOpen;
 	}
 
-	std::expected<U64, Win32FileDevice::OperationResult> Win32FileDevice::Tell() noexcept
+	std::expected<U64, IODeviceOperationResult> Win32FileDevice::Tell() noexcept
 	{
 		if (!m_open)
-			return std::unexpected(OperationResult::FileNotOpen);
+			return std::unexpected(IODeviceOperationResult::FileNotOpen);
 
 		if (m_working)
-			return std::unexpected(OperationResult::AsyncTaskRunning);
+			return std::unexpected(IODeviceOperationResult::AsyncTaskRunning);
 
 		if (m_handleType == FileHandleType::Win)
 		{
@@ -1247,33 +1124,33 @@ namespace PenEngine
 			if (SetFilePointerEx(m_handle.Win32Handle, zero, &currentPos, FILE_CURRENT))
 				return static_cast<U64>(currentPos.QuadPart);
 
-			return std::unexpected(OperationResult::OSFailure);
+			return std::unexpected(IODeviceOperationResult::OSFailure);
 		}
 
 		if (m_handleType == FileHandleType::Px && m_handle.PxHandle != nullptr)
 		{
 			const long currentPos = ftell(m_handle.PxHandle);
 			if (currentPos == -1)
-				return std::unexpected(OperationResult::OSFailure);
+				return std::unexpected(IODeviceOperationResult::OSFailure);
 
 			return static_cast<U64>(currentPos);
 		}
 
-		return std::unexpected(OperationResult::FileNotOpen);
+		return std::unexpected(IODeviceOperationResult::FileNotOpen);
 	}
 
-	std::expected<Usize, Win32FileDevice::OperationResult> Win32FileDevice::FileSize() const
+	std::expected<Usize, IODeviceOperationResult> Win32FileDevice::FileSize() const
 	{
 		if (m_path.Empty())
-			return std::unexpected(OperationResult::InvalidArgument);
+			return std::unexpected(IODeviceOperationResult::InvalidArgument);
 
 		return FileSize(m_path);
 	}
 
-	std::expected<Usize, Win32FileDevice::OperationResult> Win32FileDevice::FileSize(const Path& target)
+	std::expected<Usize, IODeviceOperationResult> Win32FileDevice::FileSize(const Path& target)
 	{
 		if (target.Empty())
-			return std::unexpected(OperationResult::InvalidArgument);
+			return std::unexpected(IODeviceOperationResult::InvalidArgument);
 
 		WIN32_FILE_ATTRIBUTE_DATA fileInfo = {};
 
@@ -1284,14 +1161,14 @@ namespace PenEngine
 		{
 			case ERROR_FILE_NOT_FOUND:
 			case ERROR_PATH_NOT_FOUND:
-				return std::unexpected(OperationResult::TargetNotFound);
+				return std::unexpected(IODeviceOperationResult::TargetNotFound);
 			case ERROR_INVALID_DRIVE:
 			case ERROR_INVALID_NAME:
-				return std::unexpected(OperationResult::InvalidArgument);
+				return std::unexpected(IODeviceOperationResult::InvalidArgument);
 			case ERROR_ACCESS_DENIED:
-				return std::unexpected(OperationResult::AccessDenied);
+				return std::unexpected(IODeviceOperationResult::AccessDenied);
 			default:
-				return std::unexpected(OperationResult::UnknownError);
+				return std::unexpected(IODeviceOperationResult::UnknownError);
 		}
 	}
 
@@ -1347,17 +1224,17 @@ namespace PenEngine
 		return attribute != INVALID_FILE_ATTRIBUTES && (attribute & FILE_ATTRIBUTE_DIRECTORY) == 0;
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::Rename(StringView name)
+	IODeviceOperationResult Win32FileDevice::Rename(StringView name)
 	{
 		if (name.Empty())
-			return OperationResult::InvalidArgument;
+			return IODeviceOperationResult::InvalidArgument;
 
 		// MoveFile 需要独占访问，先关闭当前句柄并记录模式
 		const bool wasOpen = m_open;
 		const ModeFlag previousMode = m_mode;
 
-		if (wasOpen && Close() != OperationResult::Success)
-			return OperationResult::CloseFailure;
+		if (wasOpen && Close() != IODeviceOperationResult::Success)
+			return IODeviceOperationResult::IOFailure;
 
 		Path newPath = m_path;
 		newPath.ReplaceFilename(Path(name));
@@ -1372,17 +1249,17 @@ namespace PenEngine
 			switch (error)
 			{
 				case ERROR_ACCESS_DENIED:
-					return OperationResult::AccessDenied;
+					return IODeviceOperationResult::AccessDenied;
 				case ERROR_FILE_NOT_FOUND:
 				case ERROR_PATH_NOT_FOUND:
-					return OperationResult::TargetNotFound;
+					return IODeviceOperationResult::TargetNotFound;
 				case ERROR_SHARING_VIOLATION:
-					return OperationResult::SharingViolation;
+					return IODeviceOperationResult::SharingViolation;
 				case ERROR_ALREADY_EXISTS:
 				case ERROR_FILE_EXISTS:
-					return OperationResult::TargetAlreadyExists;
+					return IODeviceOperationResult::TargetAlreadyExists;
 				default:
-					return OperationResult::UnknownError;
+					return IODeviceOperationResult::UnknownError;
 			}
 		}
 
@@ -1391,19 +1268,19 @@ namespace PenEngine
 		if (wasOpen)
 			return Open(m_path, previousMode);
 
-		return OperationResult::Success;
+		return IODeviceOperationResult::Success;
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::Move(const Path& target, bool overwrite)
+	IODeviceOperationResult Win32FileDevice::Move(const Path& target, bool overwrite)
 	{
 		if (target.Empty())
-			return OperationResult::InvalidArgument;
+			return IODeviceOperationResult::InvalidArgument;
 
 		const bool wasOpen = m_open;
 		const ModeFlag previousMode = m_mode;
 
-		if (wasOpen && Close() != OperationResult::Success)
-			return OperationResult::CloseFailure;
+		if (wasOpen && Close() != IODeviceOperationResult::Success)
+			return IODeviceOperationResult::IOFailure;
 
 		const DWORD flags = overwrite ? (MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING) : MOVEFILE_COPY_ALLOWED;
 
@@ -1417,17 +1294,17 @@ namespace PenEngine
 			switch (error)
 			{
 				case ERROR_ACCESS_DENIED:
-					return OperationResult::AccessDenied;
+					return IODeviceOperationResult::AccessDenied;
 				case ERROR_FILE_NOT_FOUND:
 				case ERROR_PATH_NOT_FOUND:
-					return OperationResult::TargetNotFound;
+					return IODeviceOperationResult::TargetNotFound;
 				case ERROR_SHARING_VIOLATION:
-					return OperationResult::SharingViolation;
+					return IODeviceOperationResult::SharingViolation;
 				case ERROR_ALREADY_EXISTS:
 				case ERROR_FILE_EXISTS:
-					return OperationResult::TargetAlreadyExists;
+					return IODeviceOperationResult::TargetAlreadyExists;
 				default:
-					return OperationResult::UnknownError;
+					return IODeviceOperationResult::UnknownError;
 			}
 		}
 
@@ -1436,186 +1313,88 @@ namespace PenEngine
 		if (wasOpen)
 			return Open(m_path, previousMode);
 
-		return OperationResult::Success;
+		return IODeviceOperationResult::Success;
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::Copy(const Path& target, bool overwrite) const
+	IODeviceOperationResult Win32FileDevice::Copy(const Path& target, bool overwrite) const
 	{
 		if (target.Empty())
-			return OperationResult::InvalidArgument;
+			return IODeviceOperationResult::InvalidArgument;
 
 		if (CopyFile(m_path.ToString<wchar_t>().Data(), target.ToString<wchar_t>().Data(), overwrite ? FALSE : TRUE))
-			return OperationResult::Success;
+			return IODeviceOperationResult::Success;
 
 		switch (GetLastError())
 		{
 			case ERROR_ACCESS_DENIED:
-				return OperationResult::AccessDenied;
+				return IODeviceOperationResult::AccessDenied;
 			case ERROR_FILE_NOT_FOUND:
 			case ERROR_PATH_NOT_FOUND:
-				return OperationResult::TargetNotFound;
+				return IODeviceOperationResult::TargetNotFound;
 			case ERROR_SHARING_VIOLATION:
-				return OperationResult::SharingViolation;
+				return IODeviceOperationResult::SharingViolation;
 			case ERROR_ALREADY_EXISTS:
 			case ERROR_FILE_EXISTS:
-				return OperationResult::TargetAlreadyExists;
+				return IODeviceOperationResult::TargetAlreadyExists;
 			default:
-				return OperationResult::UnknownError;
+				return IODeviceOperationResult::UnknownError;
 		}
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::MatchSeek(StringView data)
+	IODeviceOperationResult Win32FileDevice::MatchSeek(StringView data)
 	{
-		return MatchSeek(ByteArray(data.Data(), data.Size()));
+		return InternalMatchSeek(reinterpret_cast<const U8*>(data.Data()), data.Size());
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::MatchSeek(const ByteArray& data)
+	IODeviceOperationResult Win32FileDevice::MatchSeek(const ByteArray& data)
 	{
-		if (!m_open)
-			return OperationResult::FileNotOpen;
-
-		if (m_working)
-			return OperationResult::AsyncTaskRunning;
-
-		if (!(m_mode & Mode::CanRead))
-			return OperationResult::InvalidMode;
-
-		// 搜索属于读取操作，先确保已缓冲数据落盘，避免搜索到磁盘上的旧数据
-		if (!m_buffer.Empty())
-			if (OperationResult flushResult = Flush(); flushResult != OperationResult::Success)
-				return flushResult;
-
-		// 空匹配串视作在当前指针处命中
-		const Usize size = data.Size();
-		if (size == 0)
-			return OperationResult::Success;
-
-		std::expected<U64, OperationResult> posResult = Tell();
-		if (!posResult.has_value())
-			return posResult.error();
-		const U64 startPos = posResult.value();
-
-		std::expected<Usize, OperationResult> sizeResult = FileSize();
-		if (!sizeResult.has_value())
-			return sizeResult.error();
-		const U64 fileSize = sizeResult.value();
-
-		if (startPos > fileSize || (fileSize - startPos) < size)
-			return OperationResult::TargetNotFound;
-
-		// 使用固定大小块读取，内存占用与文件大小无关：
-		// 多出的 size - 1 字节用于缓存跨块边界可能存在的匹配前缀，避免回读文件
-		constexpr Usize SearchBlockSize = 64 * 1024;
-		ByteArray window(SearchBlockSize + size - 1);
-
-		const U8* pattern = data.Data();
-		U64 windowStart = startPos;      // window[0] 对应的绝对文件偏移
-		Usize carry = 0;                 // window[0 .. carry) 为上一块遗留的尾部数据
-		U64 remaining = fileSize - startPos;
-
-		while (remaining != 0)
-		{
-			// 总读取量不超过 SearchBlockSize，因此 window 一定能容纳 carry + 本次读取
-			const Usize want = static_cast<Usize>(std::min<U64>(remaining, SearchBlockSize));
-
-			std::expected<Usize, OperationResult> readResult = InternalSyncRead(window.Data() + carry, want);
-			if (!readResult.has_value())
-				return readResult.error();
-
-			const Usize readSize = readResult.value();
-			if (readSize == 0)
-				break;
-
-			const Usize available = carry + readSize;
-
-			// 仅在能完整容纳匹配串时查找，跨块的部分由 carry 交由下一轮处理
-			if (available >= size)
-			{
-				const U8* haystack = window.Data();
-				const U8* cursor = haystack;
-				const U8* searchEnd = haystack + (available - size + 1);
-				const U8 firstByte = pattern[0];
-
-				// 用 memchr 快速定位首字节，再用 memcmp 校验完整匹配
-				while (cursor < searchEnd)
-				{
-					cursor = static_cast<const U8*>(std::memchr(cursor, firstByte,
-						static_cast<Usize>(searchEnd - cursor)));
-					if (cursor == nullptr)
-						break;
-
-					if (size == 1 || std::memcmp(cursor + 1, pattern + 1, size - 1) == 0)
-					{
-						const U64 matchPos = windowStart + static_cast<U64>(cursor - haystack);
-						if (OperationResult seekResult = Seek(matchPos); seekResult != OperationResult::Success)
-							return seekResult;
-
-						return OperationResult::Success;
-					}
-
-					++cursor;
-				}
-			}
-
-			// 保留尾部 size - 1 字节作为下一块的前缀
-			const Usize keep = available < size ? available : (size - 1);
-			if (keep != 0)
-				std::memmove(window.Data(), window.Data() + available - keep, keep);
-
-			windowStart += available - keep;
-			carry = keep;
-			remaining -= readSize;
-		}
-
-		// 未找到匹配，恢复查找前的指针位置
-		(void)Seek(startPos);
-		return OperationResult::TargetNotFound;
+		return InternalMatchSeek(data.Data(), data.Size());
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::Remove()
+	IODeviceOperationResult Win32FileDevice::Remove()
 	{
 		if (m_path.Empty())
-			return OperationResult::InvalidArgument;
+			return IODeviceOperationResult::InvalidArgument;
 
-		if (m_open && Close() != OperationResult::Success)
-			return OperationResult::CloseFailure;
+		if (m_open && Close() != IODeviceOperationResult::Success)
+			return IODeviceOperationResult::IOFailure;
 
 		if (!FileDeviceDetail::RemoveRecursive(m_path))
-			return OperationResult::IOFailure;
+			return IODeviceOperationResult::IOFailure;
 
 		m_path.Clear();
-		return OperationResult::Success;
+		return IODeviceOperationResult::Success;
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::Remove(const Path& target)
+	IODeviceOperationResult Win32FileDevice::Remove(const Path& target)
 	{
 		if (target.Empty())
-			return OperationResult::InvalidArgument;
+			return IODeviceOperationResult::InvalidArgument;
 
 		if (!FileDeviceDetail::RemoveRecursive(target))
-			return OperationResult::IOFailure;
+			return IODeviceOperationResult::IOFailure;
 
-		return OperationResult::Success;
+		return IODeviceOperationResult::Success;
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::MoveToTrash()
+	IODeviceOperationResult Win32FileDevice::MoveToTrash()
 	{
 		if (m_path.Empty())
-			return OperationResult::InvalidArgument;
+			return IODeviceOperationResult::InvalidArgument;
 
-		if (m_open && Close() != OperationResult::Success)
-			return OperationResult::CloseFailure;
+		if (m_open && Close() != IODeviceOperationResult::Success)
+			return IODeviceOperationResult::IOFailure;
 
 		return MoveToTrash(m_path);
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::MoveToTrash(const Path& target)
+	IODeviceOperationResult Win32FileDevice::MoveToTrash(const Path& target)
 	{
 		if (target.Empty())
-			return OperationResult::InvalidArgument;
+			return IODeviceOperationResult::InvalidArgument;
 
 		if (!Exists(target))
-			return OperationResult::TargetNotFound;
+			return IODeviceOperationResult::TargetNotFound;
 
 		// SHFileOperationW 要求以双 \0 结尾的路径列表
 		std::wstring from = target.ToAbsolutePathWString().ConvertToStdString<wchar_t>();
@@ -1634,27 +1413,27 @@ namespace PenEngine
 			switch (result)
 			{
 				case ERROR_ACCESS_DENIED:
-					return OperationResult::AccessDenied;
+					return IODeviceOperationResult::AccessDenied;
 				case ERROR_FILE_NOT_FOUND:
 				case ERROR_PATH_NOT_FOUND:
-					return OperationResult::TargetNotFound;
+					return IODeviceOperationResult::TargetNotFound;
 				default:
-					return OperationResult::IOFailure;
+					return IODeviceOperationResult::IOFailure;
 			}
 		}
 
 		if (operation.fAnyOperationsAborted)
-			return OperationResult::IOFailure;
+			return IODeviceOperationResult::IOFailure;
 
-		return OperationResult::Success;
+		return IODeviceOperationResult::Success;
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::ResetFileSize(U64 size)
+	IODeviceOperationResult Win32FileDevice::ResetFileSize(U64 size)
 	{
 		if (!m_open)
 		{
 			if (m_path.Empty())
-				return OperationResult::FileNotOpen;
+				return IODeviceOperationResult::FileNotOpen;
 
 			// 尚未打开：用临时设备以读写模式打开后调整大小
 			return ResetFileSize(m_path, size);
@@ -1662,10 +1441,10 @@ namespace PenEngine
 
 		// 调整大小前先冲刷缓冲并落盘，避免与在途写竞争
 		if (!m_buffer.Empty())
-			if (OperationResult flushResult = Flush(); flushResult != OperationResult::Success)
+			if (IODeviceOperationResult flushResult = Flush(); flushResult != IODeviceOperationResult::Success)
 				return flushResult;
 
-		std::expected<U64, OperationResult> posResult = Tell();
+		std::expected<U64, IODeviceOperationResult> posResult = Tell();
 		if (!posResult.has_value())
 			return posResult.error();
 
@@ -1677,7 +1456,7 @@ namespace PenEngine
 			if (!SetFilePointerEx(m_handle.Win32Handle, offset, nullptr, FILE_BEGIN) || !SetEndOfFile(m_handle.Win32Handle))
 			{
 				(void)Seek(currentPos);
-				return OperationResult::IOFailure;
+				return IODeviceOperationResult::IOFailure;
 			}
 
 			// 原位置若已被截断则回退到文件末尾
@@ -1689,28 +1468,28 @@ namespace PenEngine
 			if (_chsize_s(_fileno(m_handle.PxHandle), static_cast<long long>(size)) != 0)
 			{
 				(void)Seek(currentPos);
-				return OperationResult::IOFailure;
+				return IODeviceOperationResult::IOFailure;
 			}
 
 			return Seek(std::min(currentPos, size));
 		}
 
-		return OperationResult::FileNotOpen;
+		return IODeviceOperationResult::FileNotOpen;
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::ResetFileSize(const Path& target, U64 size)
+	IODeviceOperationResult Win32FileDevice::ResetFileSize(const Path& target, U64 size)
 	{
 		if (target.Empty())
-			return OperationResult::InvalidArgument;
+			return IODeviceOperationResult::InvalidArgument;
 
 		Win32FileDevice temp;
-		if (OperationResult openResult = temp.Open(target, Mode::CanWriteAndRead); openResult != OperationResult::Success)
+		if (IODeviceOperationResult openResult = temp.Open(target, Mode::CanWriteAndRead); openResult != IODeviceOperationResult::Success)
 			return openResult;
 
 		return temp.ResetFileSize(size);
 	}
 
-	Win32FileDevice::OperationResult Win32FileDevice::InternalSyncWrite(const U8* data, Usize reqSize) const noexcept
+	IODeviceOperationResult Win32FileDevice::InternalSyncWrite(const U8* data, Usize reqSize) const noexcept
 	{
 		// 防御应该由前台处理
 
@@ -1721,7 +1500,7 @@ namespace PenEngine
 			const bool overlappedMode = m_mode.Test(Mode::EnableAsyncOperation);
 
 			if (overlappedMode && (m_overlapEvent == nullptr || m_overlapEvent == INVALID_HANDLE_VALUE))
-				return OperationResult::OSFailure;
+				return IODeviceOperationResult::OSFailure;
 
 			LARGE_INTEGER zero{ .QuadPart = 0 };
 			LARGE_INTEGER currentPos{ .QuadPart = 0 };
@@ -1732,7 +1511,7 @@ namespace PenEngine
 			if (overlappedMode)
 			{
 				if (!SetFilePointerEx(m_handle.Win32Handle, zero, &currentPos, FILE_CURRENT))
-					return OperationResult::IOFailure;
+					return IODeviceOperationResult::IOFailure;
 
 				writeOffset = static_cast<U64>(currentPos.QuadPart);
 			}
@@ -1769,21 +1548,21 @@ namespace PenEngine
 					{
 						// 已提交异步写入：等待事件并取回结果
 						if (WaitForSingleObject(overlapped.hEvent, INFINITE) == WAIT_FAILED)
-							return OperationResult::IOFailure;
+							return IODeviceOperationResult::IOFailure;
 
 						if (GetOverlappedResult(m_handle.Win32Handle, &overlapped, &currentWrittenSize, FALSE) == FALSE)
 							return GetLastError() == ERROR_DISK_FULL
-								? OperationResult::DeviceFull
-								: OperationResult::IOFailure;
+							? IODeviceOperationResult::BufferFull
+							: IODeviceOperationResult::IOFailure;
 					}
 					else if (totalWrittenSize == 0)
 					{
 						switch (error)
 						{
 							case ERROR_DISK_FULL:
-								return OperationResult::DeviceFull;
+								return IODeviceOperationResult::BufferFull;
 							default:
-								return OperationResult::IOFailure;
+								return IODeviceOperationResult::IOFailure;
 						}
 					}
 					else
@@ -1808,32 +1587,32 @@ namespace PenEngine
 				// 将文件指针推进到本次写入的结束位置，保证 Tell() 与后续同步操作一致
 				LARGE_INTEGER finalPos{ .QuadPart = static_cast<I64>(writeOffset) };
 				if (!SetFilePointerEx(m_handle.Win32Handle, finalPos, nullptr, FILE_BEGIN))
-					return OperationResult::IOFailure;
+					return IODeviceOperationResult::IOFailure;
 			}
 
-			return totalWrittenSize == reqSize ? OperationResult::Success : OperationResult::IOFailure;
+			return totalWrittenSize == reqSize ? IODeviceOperationResult::Success : IODeviceOperationResult::IOFailure;
 		}
 
 		if (m_handleType != FileHandleType::Px || m_handle.PxHandle == nullptr)
-			return OperationResult::FileNotOpen;
+			return IODeviceOperationResult::FileNotOpen;
 
 		clearerr(m_handle.PxHandle);
 		if ((fwrite(data, reqSize, 1, m_handle.PxHandle) == 1) && (fflush(m_handle.PxHandle) == 0))
-			return OperationResult::Success;
+			return IODeviceOperationResult::Success;
 
 		clearerr(m_handle.PxHandle); // 清除错误标志，允许后续操作
 		switch (errno)
 		{
 			case EBADF:
-				return OperationResult::PxHandleNotSupport;
+				return IODeviceOperationResult::InvalidMode;
 			case ENOSPC:
-				return OperationResult::DeviceFull;
+				return IODeviceOperationResult::BufferFull;
 			default:
-				return OperationResult::IOFailure;
+				return IODeviceOperationResult::IOFailure;
 		}
 	}
 
-	std::expected<Usize, Win32FileDevice::OperationResult> Win32FileDevice::InternalSyncRead(U8* buffer,
+	std::expected<Usize, IODeviceOperationResult> Win32FileDevice::InternalSyncRead(U8* buffer,
 		Usize reqSize) const noexcept
 	{
 		// 防御应该由前台处理
@@ -1844,7 +1623,7 @@ namespace PenEngine
 			const bool overlappedMode = m_mode.Test(Mode::EnableAsyncOperation);
 
 			if (overlappedMode && (m_overlapEvent == nullptr || m_overlapEvent == INVALID_HANDLE_VALUE))
-				return std::unexpected(OperationResult::OSFailure);
+				return std::unexpected(IODeviceOperationResult::OSFailure);
 
 			LARGE_INTEGER zero{ .QuadPart = 0 };
 			LARGE_INTEGER currentPos{ .QuadPart = 0 };
@@ -1854,7 +1633,7 @@ namespace PenEngine
 			if (overlappedMode)
 			{
 				if (!SetFilePointerEx(m_handle.Win32Handle, zero, &currentPos, FILE_CURRENT))
-					return std::unexpected(OperationResult::IOFailure);
+					return std::unexpected(IODeviceOperationResult::IOFailure);
 
 				readOffset = static_cast<U64>(currentPos.QuadPart);
 			}
@@ -1895,7 +1674,7 @@ namespace PenEngine
 					{
 						// 已提交异步读取：等待事件并取回结果
 						if (WaitForSingleObject(overlapped.hEvent, INFINITE) == WAIT_FAILED)
-							return std::unexpected(OperationResult::IOFailure);
+							return std::unexpected(IODeviceOperationResult::IOFailure);
 
 						if (GetOverlappedResult(m_handle.Win32Handle, &overlapped, &bytesRead, FALSE) == FALSE)
 						{
@@ -1903,12 +1682,12 @@ namespace PenEngine
 							if (GetLastError() == ERROR_HANDLE_EOF)
 								break;
 
-							return std::unexpected(OperationResult::IOFailure);
+							return std::unexpected(IODeviceOperationResult::IOFailure);
 						}
 					}
 					else if (totalReadSize == 0)
 					{
-						return std::unexpected(OperationResult::IOFailure);
+						return std::unexpected(IODeviceOperationResult::IOFailure);
 					}
 					else
 					{
@@ -1933,14 +1712,14 @@ namespace PenEngine
 				// 将文件指针推进到本次读取的结束位置，保证 Tell() 与后续同步操作一致
 				LARGE_INTEGER finalPos{ .QuadPart = static_cast<I64>(readOffset) };
 				if (!SetFilePointerEx(m_handle.Win32Handle, finalPos, nullptr, FILE_BEGIN))
-					return std::unexpected(OperationResult::IOFailure);
+					return std::unexpected(IODeviceOperationResult::IOFailure);
 			}
 
 			return totalReadSize;
 		}
 
 		if (m_handleType != FileHandleType::Px || m_handle.PxHandle == nullptr)
-			return std::unexpected(OperationResult::FileNotOpen);
+			return std::unexpected(IODeviceOperationResult::FileNotOpen);
 
 		Usize totalRead = 0;
 
@@ -1969,9 +1748,9 @@ namespace PenEngine
 						switch (errno)
 						{
 							case EBADF:
-								return std::unexpected(OperationResult::PxHandleNotSupport);
+								return std::unexpected(IODeviceOperationResult::InvalidMode);
 							default:
-								return std::unexpected(OperationResult::IOFailure);
+								return std::unexpected(IODeviceOperationResult::IOFailure);
 						}
 					}
 					break;
@@ -1983,5 +1762,107 @@ namespace PenEngine
 		}
 
 		return totalRead;
+	}
+
+	IODeviceOperationResult Win32FileDevice::InternalMatchSeek(const U8* data, Usize size)
+	{
+		if (!m_open)
+			return IODeviceOperationResult::FileNotOpen;
+
+		if (m_working)
+			return IODeviceOperationResult::AsyncTaskRunning;
+
+		if (!(m_mode & Mode::CanRead))
+			return IODeviceOperationResult::InvalidMode;
+
+		// 搜索属于读取操作，先确保已缓冲数据落盘，避免搜索到磁盘上的旧数据
+		if (!m_buffer.Empty())
+			if (IODeviceOperationResult flushResult = Flush(); flushResult != IODeviceOperationResult::Success)
+				return flushResult;
+
+		// 空匹配串视作在当前指针处命中
+		if (size == 0)
+			return IODeviceOperationResult::Success;
+
+		std::expected<U64, IODeviceOperationResult> posResult = Tell();
+		if (!posResult.has_value())
+			return posResult.error();
+		const U64 startPos = posResult.value();
+
+		std::expected<Usize, IODeviceOperationResult> sizeResult = FileSize();
+		if (!sizeResult.has_value())
+			return sizeResult.error();
+		const U64 fileSize = sizeResult.value();
+
+		if (startPos > fileSize || (fileSize - startPos) < size)
+			return IODeviceOperationResult::TargetNotFound;
+
+		// 使用固定大小块读取，内存占用与文件大小无关：
+		// 多出的 size - 1 字节用于缓存跨块边界可能存在的匹配前缀，避免回读文件
+		constexpr Usize SearchBlockSize = 64 * 1024;
+		ByteArray window(SearchBlockSize + size - 1);
+
+		const U8* pattern = data;
+		U64 windowStart = startPos;      // window[0] 对应的绝对文件偏移
+		Usize carry = 0;                 // window[0 .. carry) 为上一块遗留的尾部数据
+		U64 remaining = fileSize - startPos;
+
+		while (remaining != 0)
+		{
+			// 总读取量不超过 SearchBlockSize，因此 window 一定能容纳 carry + 本次读取
+			const Usize want = static_cast<Usize>(std::min<U64>(remaining, SearchBlockSize));
+
+			std::expected<Usize, IODeviceOperationResult> readResult = InternalSyncRead(window.Data() + carry, want);
+			if (!readResult.has_value())
+				return readResult.error();
+
+			const Usize readSize = readResult.value();
+			if (readSize == 0)
+				break;
+
+			const Usize available = carry + readSize;
+
+			// 仅在能完整容纳匹配串时查找，跨块的部分由 carry 交由下一轮处理
+			if (available >= size)
+			{
+				const U8* haystack = window.Data();
+				const U8* cursor = haystack;
+				const U8* searchEnd = haystack + (available - size + 1);
+				const U8 firstByte = pattern[0];
+
+				// 用 memchr 快速定位首字节，再用 memcmp 校验完整匹配
+				while (cursor < searchEnd)
+				{
+					cursor = static_cast<const U8*>(std::memchr(cursor, firstByte,
+																static_cast<Usize>(searchEnd - cursor)));
+					if (cursor == nullptr)
+						break;
+
+					if (size == 1 || std::memcmp(cursor + 1, pattern + 1, size - 1) == 0)
+					{
+						const U64 matchPos = windowStart + static_cast<U64>(cursor - haystack);
+						if (IODeviceOperationResult seekResult = Seek(matchPos); seekResult != IODeviceOperationResult::Success)
+							return seekResult;
+
+						return IODeviceOperationResult::Success;
+					}
+
+					++cursor;
+				}
+			}
+
+			// 保留尾部 size - 1 字节作为下一块的前缀
+			const Usize keep = available < size ? available : (size - 1);
+			if (keep != 0)
+				std::memmove(window.Data(), window.Data() + available - keep, keep);
+
+			windowStart += available - keep;
+			carry = keep;
+			remaining -= readSize;
+		}
+
+		// 未找到匹配，恢复查找前的指针位置
+		(void)Seek(startPos);
+		return IODeviceOperationResult::TargetNotFound;
 	}
 }

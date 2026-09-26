@@ -159,4 +159,50 @@
 	<Type Name="PenEngine::CloseEvent">
 		<DisplayString>CloseEvent</DisplayString>
 	</Type>
+	<!--Engine/Math/Vec2.hpp-->
+	<Type Name="PenEngine::FloatVec2&lt;*&gt;">
+		<DisplayString>[{X}, {Y}]</DisplayString>
+	</Type>
+
+	<Type Name="PenEngine::IntegralVec2&lt;*&gt;">
+		<DisplayString>[{X}, {Y}]</DisplayString>
+	</Type>
+
+	<!--Engine/Math/Vec3.hpp（无 16 字节对齐：sizeof(Vec3F) == 12）-->
+	<Type Name="PenEngine::FloatVec3&lt;*&gt;">
+		<DisplayString>[{X}, {Y}, {Z}]</DisplayString>
+	</Type>
+
+	<Type Name="PenEngine::IntegralVec3&lt;*&gt;">
+		<DisplayString>[{X}, {Y}, {Z}]</DisplayString>
+	</Type>
+
+	<!--Engine/Math/Vec4.hpp-->
+	<Type Name="PenEngine::FloatVec4&lt;*&gt;">
+		<DisplayString>[{X}, {Y}, {Z}, {W}]</DisplayString>
+	</Type>
+
+	<Type Name="PenEngine::IntegralVec4&lt;*&gt;">
+		<DisplayString>[{X}, {Y}, {Z}, {W}]</DisplayString>
+	</Type>
+
+	<!--Engine/Math/Mat4x4.hpp（I1：列主序，展开顺序即 m_data 的存储顺序）-->
+	<Type Name="PenEngine::Mat4x4&lt;*&gt;">
+		<DisplayString>Mat4x4</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>16</Size>
+				<ValuePointer>m_data</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<!--Engine/Math/Color.hpp-->
+	<Type Name="PenEngine::Color32">
+		<DisplayString>[R={R}, G={G}, B={B}, A={A}]</DisplayString>
+	</Type>
+
+	<Type Name="PenEngine::ColorF">
+		<DisplayString>[R={R}, G={G}, B={B}, A={A}]</DisplayString>
+	</Type>
 </AutoVisualizer>

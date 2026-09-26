@@ -36,11 +36,13 @@ if(NOT WIN32)
 endif()
 
 # ----------------------------------------------------------------------------
-# 测试与基准（默认关闭；打开后可用 ctest 运行）
+# 测试与基准（由根 CMakeLists.txt 的 PENFRAMEWORK_BUILD_TESTS 控制；打开后可用 ctest 运行）
+# 目录约定见 Docs/Testing.md：Test/UnitTest/ 放单元测试，Test/Benchmark/ 放基准。
+# 本模块的测试不走 GTest：MiniTest.h 是不从被测分配器取堆的三宏框架，用它可以避免
+# 测试脚手架本身的分配干扰分配器状态。
 # ----------------------------------------------------------------------------
-option(PEN_MEMORY_BUILD_TESTS "构建 PenMemory 的测试与基准程序" OFF)
 
-if(PEN_MEMORY_BUILD_TESTS)
+if(PENFRAMEWORK_BUILD_TESTS)
 	# 内部测试：直接编译分配器源码，可以访问 SizeMap/PageCache 等内部类型
 	function(pen_memory_internal_test name)
 		add_executable(${name} ${ARGN} ${PEN_MEMORY_SOURCES})
@@ -58,22 +60,22 @@ if(PEN_MEMORY_BUILD_TESTS)
 		add_test(NAME ${name} COMMAND ${name})
 	endfunction()
 
-	pen_memory_internal_test(test_sizemap       tests/test_sizemap.cpp)
-	pen_memory_internal_test(test_pagecache     tests/test_pagecache.cpp)
-	pen_memory_internal_test(test_centralcache  tests/test_centralcache.cpp)
-	pen_memory_internal_test(test_threadcache   tests/test_threadcache.cpp)
-	pen_memory_internal_test(test_interface     tests/test_interface.cpp)
+	pen_memory_internal_test(test_sizemap       Test/UnitTest/test_sizemap.cpp)
+	pen_memory_internal_test(test_pagecache     Test/UnitTest/test_pagecache.cpp)
+	pen_memory_internal_test(test_centralcache  Test/UnitTest/test_centralcache.cpp)
+	pen_memory_internal_test(test_threadcache   Test/UnitTest/test_threadcache.cpp)
+	pen_memory_internal_test(test_interface     Test/UnitTest/test_interface.cpp)
 
 	# test_override 链接 DLL，并使用主程序那套全局 operator new/delete
 	pen_memory_dll_test(test_override
-		tests/test_override.cpp
+		Test/UnitTest/test_override.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/../Engine/Memory/MemoryOperator.cpp
 	)
 	# C ABI 本身（不接管 operator new/delete）
-	pen_memory_dll_test(test_dll tests/test_dll.cpp)
+	pen_memory_dll_test(test_dll Test/UnitTest/test_dll.cpp)
 
 	# 基准（只构建，不由 ctest 运行）
-	add_executable(benchmark tests/benchmark.cpp ${PEN_MEMORY_SOURCES})
+	add_executable(benchmark Test/Benchmark/benchmark.cpp ${PEN_MEMORY_SOURCES})
 	target_include_directories(benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 	set_target_properties(benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 endif()

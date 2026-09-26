@@ -18,9 +18,11 @@
 #include <expected>
 #include <utility>
 
+#include "../IIODevice.hpp"
+
 namespace PenEngine
 {
-	class Win32FileDevice
+	class Win32FileDevice : public IBasicIODevice
 	{
 	public:
 		constexpr static U64 DefaultSyncBufferSize = 4 * 1024ull; // 4KB
@@ -55,59 +57,23 @@ namespace PenEngine
 
 		DECL_ENUM_FLAG_FRIEND_TYPE(Mode);
 
-		enum class OperationResult : U8
-		{
-			Success,
-
-			InvalidMode, // 打开模式与操作不匹配，例如尝试以只读模式写入数据
-			InvalidArgument, // 参数无效
-
-			AccessDenied, // 权限不足，例如没有足够的权限访问文件或目录
-			SharingViolation, // 进程无法访问文件，因为另一个进程正在使用该文件
-
-			TargetAlreadyExists, // 目标已存在，例如尝试创建一个已经存在的文件或目录
-			TargetInvalid, // 目标无效，例如目标路径指向一个不存在的文件或目录，或者目标路径格式错误
-			TargetNotFound, // 目标未找到，例如尝试访问一个不存在的文件或目录
-
-			FileNotOpen, // 目标未打开，例如尝试对一个未成功打开的文件进行读写操作
-
-			DeviceFull, // 目标磁盘已满，无法写入数据
-
-			IOFailure, // 输入输出错误，例如磁盘故障导致的读写失败
-			CloseFailure, // 无法关闭文件，通常代表无法写入缓冲区数据，如果需要得到错误原因，请调用Flush()函数
-			OSFailure, // 操作系统调用失败
-
-			OSNotSupport, // 操作系统不支持该操作
-
-			PxHandleNotSupport, // POSIX句柄不支持该操作，例如创建了写句柄但是执行读操作
-
-			AsyncTaskRunning, // 正在执行异步任务
-			AsyncTaskCancel, // 异步任务被取消
-
-			EndOfFile,
-
-			UnknownError // 未知错误
-		};
-
 		using HANDLE = void*;
 		using DWORD = unsigned long;
 
+		PENFRAMEWORK_IODEVICE_OVERLOADING;
+
 		Win32FileDevice() noexcept = default;
 
-		OperationResult Open(const Path& path, ModeFlag mode);
-		OperationResult Open(FILE* handle, ModeFlag mode);
+		IODeviceOperationResult Open(const Path& path, ModeFlag mode);
+		IODeviceOperationResult Open(FILE* handle, ModeFlag mode);
 
-		OperationResult Close() noexcept;
+		IODeviceOperationResult Close() noexcept;
 
-		OperationResult Seek(U64 pos) noexcept;
-		std::expected<U64, OperationResult> Tell() noexcept;
+		IODeviceOperationResult Seek(U64 pos) noexcept;
+		std::expected<U64, IODeviceOperationResult> Tell() noexcept;
 
-		OperationResult WriteFrom(const IOutputBuffer& buf, Usize size);
-		OperationResult WriteFrom(const ByteArray& buf, Usize size);
-		OperationResult WriteFrom(const U8* buf, Usize size);
+		virtual IODeviceOperationResult WriteFrom(const U8* buf, Usize size) override;
 
-		OperationResult WriteAllFrom(const IOutputBuffer& buf) noexcept;
-		OperationResult WriteAllFrom(const ByteArray& buf) noexcept;
 
 		/// @brief 异步写入数据
 		/// @param buf 数据指针
@@ -116,32 +82,25 @@ namespace PenEngine
 		///        为 true 时数据由设备持有，调用方在任务完成前可以立即释放/复用 buf；
 		///        为 false 时设备直接引用 buf，调用方必须保证该内存在对应 CoroutineTask
 		///        被驱动至完成之前一直有效（最多 MAX_ASYNC_OVERLAP_BLOCK 块同时在途）。
-		CoroutineTask<OperationResult> AsyncWriteFrom(const U8* buf, Usize size, bool copyToInternal = true);
-		CoroutineTask<OperationResult> AsyncWriteFrom(const ByteArray& buf, Usize size, bool copyToInternal = true);
-		CoroutineTask<OperationResult> AsyncWriteFrom(const IOutputBuffer& buf, Usize size, bool copyToInternal = true);
+		virtual CoroutineTask<IODeviceOperationResult> AsyncWriteFrom(const U8* buf, Usize size, bool copyToInternal = true) override;
 
-		CoroutineTask<OperationResult> AsyncWriteAllFrom(const ByteArray& buf);
-		CoroutineTask<OperationResult> AsyncWriteAllFrom(const IOutputBuffer& buf);
+		CoroutineTask<IODeviceOperationResult> AsyncWriteAllFrom(const ByteArray& buf);
+		CoroutineTask<IODeviceOperationResult> AsyncWriteAllFrom(const IOutputBuffer& buf);
 
 		/// @brief 异步将内部缓冲区中积压的数据落盘
-		CoroutineTask<OperationResult> AsyncFlush();
+		CoroutineTask<IODeviceOperationResult> AsyncFlush();
 
-		std::expected<Usize, OperationResult> ReadTo(IInputBuffer& buf, Usize size);
-		std::expected<Usize, OperationResult> ReadTo(U8* buf, Usize size);
-		std::expected<Usize, OperationResult> ReadTo(ByteArray& buf, Usize size);
-		std::expected<Usize, OperationResult> ReadTo(String& buf, Usize size);
+		virtual std::expected<Usize, IODeviceOperationResult> ReadTo(U8* buf, Usize size) override;
 
-		std::expected<Usize, OperationResult> ReadAllTo(IInputBuffer& buf);
-		std::expected<Usize, OperationResult> ReadAllTo(ByteArray& buf);
-		std::expected<Usize, OperationResult> ReadAllTo(String& buf);
+		std::expected<Usize, IODeviceOperationResult> ReadAllTo(IInputBuffer& buf);
+		std::expected<Usize, IODeviceOperationResult> ReadAllTo(ByteArray& buf);
 
-		CoroutineTask<std::expected<Usize, OperationResult>> AsyncReadTo(U8* buf, Usize size);
-		CoroutineTask<std::expected<Usize, OperationResult>> AsyncReadTo(ByteArray& buf, Usize size);
-		CoroutineTask<std::expected<Usize, OperationResult>> AsyncReadTo(IInputBuffer& buf, Usize size);
-		CoroutineTask<std::expected<Usize, OperationResult>> AsyncReadAllTo(ByteArray& buf);
-		CoroutineTask<std::expected<Usize, OperationResult>> AsyncReadAllTo(IInputBuffer& buf);
+		virtual CoroutineTask<std::expected<Usize, IODeviceOperationResult>> AsyncReadTo(U8* buf, Usize size) override;
 
-		OperationResult Flush() noexcept;
+		CoroutineTask<std::expected<Usize, IODeviceOperationResult>> AsyncReadAllTo(IInputBuffer& buf);
+		CoroutineTask<std::expected<Usize, IODeviceOperationResult>> AsyncReadAllTo(ByteArray& buf);
+
+		IODeviceOperationResult Flush() noexcept;
 		[[nodiscard]] bool IsOpen() const noexcept;
 
 		[[nodiscard]] bool Exists() const;
@@ -153,25 +112,25 @@ namespace PenEngine
 		[[nodiscard]] bool IsRegularFile() const;
 		[[nodiscard]] static bool IsRegularFile(const Path& path);
 
-		std::expected<Usize, OperationResult> FileSize() const;
-		static std::expected<Usize, OperationResult> FileSize(const Path& target);
+		std::expected<Usize, IODeviceOperationResult> FileSize() const;
+		static std::expected<Usize, IODeviceOperationResult> FileSize(const Path& target);
 
-		OperationResult ResetFileSize(U64 size);
-		static OperationResult ResetFileSize(const Path& target, U64 size);
+		IODeviceOperationResult ResetFileSize(U64 size);
+		static IODeviceOperationResult ResetFileSize(const Path& target, U64 size);
 
-		OperationResult Rename(StringView name);
-		OperationResult Move(const Path& target, bool overwrite = false);
-		OperationResult Copy(const Path& target, bool overwrite = false) const;
+		IODeviceOperationResult Rename(StringView name);
+		IODeviceOperationResult Move(const Path& target, bool overwrite = false);
+		IODeviceOperationResult Copy(const Path& target, bool overwrite = false) const;
 
 		// 从当前指针位置起查找数据串，命中后将指针定位到匹配头部；未命中则恢复原位置
-		OperationResult MatchSeek(StringView data);
-		OperationResult MatchSeek(const ByteArray& data);
+		IODeviceOperationResult MatchSeek(StringView data);
+		IODeviceOperationResult MatchSeek(const ByteArray& data);
 
-		OperationResult Remove();
-		static OperationResult Remove(const Path& target);
+		IODeviceOperationResult Remove();
+		static IODeviceOperationResult Remove(const Path& target);
 
-		OperationResult MoveToTrash();
-		static OperationResult MoveToTrash(const Path& target);
+		IODeviceOperationResult MoveToTrash();
+		static IODeviceOperationResult MoveToTrash(const Path& target);
 
 		void SetSyncBufferSize(Usize bufSize) noexcept;
 		[[nodiscard]] Usize GetSyncBufferSize() const noexcept;
@@ -229,17 +188,17 @@ namespace PenEngine
 			/// @param beginOffset 本批第一个块对应的文件偏移
 			/// @param outLaunchedSize 本批实际发起的字节数
 			/// @return 发起结果；IOFailure表示某块发起失败，其余块已被取消并等待落地
-			[[nodiscard]] OperationResult Launch(bool isWrite, HANDLE handle, const U8* buffer,
+			[[nodiscard]] IODeviceOperationResult Launch(bool isWrite, HANDLE handle, const U8* buffer,
 				Usize totalSize, U64 beginOffset, Usize& outLaunchedSize) noexcept;
 
 			/// @brief 阶段二：收集本批结果
 			/// @param handle 目标文件句柄
 			/// @param outTransferredSize 本批实际完成传输的字节数
 			/// @return 首个错误；全部成功时返回Success
-			[[nodiscard]] OperationResult CollectResult(HANDLE handle, Usize& outTransferredSize) noexcept;
+			[[nodiscard]] IODeviceOperationResult CollectResult(HANDLE handle, Usize& outTransferredSize) noexcept;
 
 			/// @brief 阶段一：是否所有块都已完成（不消费结果）
-			[[nodiscard]] bool IsReady() noexcept override;
+			[[nodiscard]] virtual bool IsReady() noexcept override;
 
 			/// @brief 取消所有在途块并等待其落地，保证析构不再有内核写入本对象内存
 			virtual bool Cancel() override;
@@ -271,32 +230,33 @@ namespace PenEngine
 			Usize m_collectIndex = 0;
 			bool m_isWrite = true;
 			bool m_eofReached = false;
-			OperationResult m_error = OperationResult::Success;
+			IODeviceOperationResult m_error = IODeviceOperationResult::Success;
 		};
 
-		OperationResult InternalSyncWrite(const U8* data, Usize reqSize) const noexcept;
-		std::expected<Usize, OperationResult> InternalSyncRead(U8* buffer, Usize reqSize) const noexcept;
+		IODeviceOperationResult InternalSyncWrite(const U8* data, Usize reqSize) const noexcept;
+		std::expected<Usize, IODeviceOperationResult> InternalSyncRead(U8* buffer, Usize reqSize) const noexcept;
+		IODeviceOperationResult InternalMatchSeek(const U8* data,Usize size);
 
 		/// @brief 不检查m_working的内部版本：供已持有工作权的协程体调用，避免被自身的工作标记拒绝
-		OperationResult FlushInternal() noexcept;
-		OperationResult WriteFromInternal(const U8* buf, Usize size);
+		IODeviceOperationResult FlushInternal() noexcept;
+		IODeviceOperationResult WriteFromInternal(const U8* buf, Usize size);
 
 		/// @brief 单批次异步写：以重叠批次执行一段数据，返回本段写入结果
-		CoroutineTask<OperationResult> InternalAsyncWrite(uintptr_t handleValue, const U8* data, Usize size,
+		CoroutineTask<IODeviceOperationResult> InternalAsyncWrite(uintptr_t handleValue, const U8* data, Usize size,
 			U64 beginOffset, Usize& outWrittenSize) const;
 
 		/// @brief 重叠批次循环的公共部件（不含参数与工作权校验）
-		CoroutineTask<OperationResult> AsyncWriteFromInternal(const U8* buf, Usize size, bool copyToInternal);
-		CoroutineTask<std::expected<Usize, OperationResult>> AsyncReadToInternal(U8* buf, Usize size);
+		CoroutineTask<IODeviceOperationResult> AsyncWriteFromInternal(const U8* buf, Usize size, bool copyToInternal);
+		CoroutineTask<std::expected<Usize, IODeviceOperationResult>> AsyncReadToInternal(U8* buf, Usize size);
 
 		/// @brief 在需要时先让内部缓冲区落盘：小缓冲同步刷，大缓冲异步刷
-		CoroutineTask<OperationResult> FlushBeforeAsyncOperation();
+		CoroutineTask<IODeviceOperationResult> FlushBeforeAsyncOperation();
 
 		/// @brief 设置当前逻辑文件位置（重叠IO不会自动推进内核文件指针）
-		OperationResult SeekCurrent(U64 pos) const noexcept;
+		IODeviceOperationResult SeekCurrent(U64 pos) const noexcept;
 
 		/// @brief 获取当前逻辑文件位置
-		std::expected<U64, OperationResult> TellCurrent() const noexcept;
+		std::expected<U64, IODeviceOperationResult> TellCurrent() const noexcept;
 
 		/// @brief 是否启用了异步（重叠）模式
 		[[nodiscard]] bool IsAsyncMode() const noexcept

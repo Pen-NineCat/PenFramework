@@ -4,11 +4,16 @@
   "dependencies": [
     "boost-unordered",
     "boost-locale",
+    "boost-dynamic-bitset",
+    "boost-uuid",
     "plf-hive",
+    "freetype",
+    "spdlog",
     {
       "name": "wintoast",
       "platform": "windows"
     },
+    "gtest",
     "magic-enum"
   ]
 }

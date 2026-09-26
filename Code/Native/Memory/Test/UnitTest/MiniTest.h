@@ -1,4 +1,4 @@
-// File /Native/Memory/tests/MiniTest.h
+// File /Native/Memory/Test/UnitTest/MiniTest.h
 //
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 - Present Pen-NineCat(PenNineCat) https://github.com/Pen-NineCat
@@ -14,8 +14,8 @@
 #include <string>
 #include <type_traits>
 
-#include "../Common.hpp"
-#include "../Interface.h"
+#include "../../Common.hpp"
+#include "../../Interface.h"
 
 namespace PenMemoryTest
 {

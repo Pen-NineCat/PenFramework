@@ -10,7 +10,8 @@
 > 构建目录。对外是纯 C 的 `extern "C"` ABI（`Interface.h`，实现是 `Interface.cpp`），C++ 侧封装在
 > `Code/Native/Engine/Memory/Memory.hpp`，全局 `operator new/delete` 接管在
 > `Code/Native/Engine/Memory/MemoryOperator.cpp`（只替换主程序自己的 new/delete）。
-> 测试由 CMake 选项 `PEN_MEMORY_BUILD_TESTS`（默认 OFF）打开后用 ctest 运行，`build.ps1` 也仍可
+> 测试由根 `CMakeLists.txt` 的统一选项 `PENFRAMEWORK_BUILD_TESTS`（默认 OFF，约定见
+> `Docs/Testing.md`）打开后用 ctest 运行，`build.ps1` 也仍可
 > 独立编译并运行测试。文档里出现的旧接口名已按新命名更新，例如
 > `CentralFreeList::length()` → `CachedObjectCount()`、`os::PageSize()` → `os::GetSystemPageSize()`。
 
@@ -89,7 +90,7 @@ Code/Native/Memory/
   ThreadCache.h/.cpp   线程本地缓存（FreeList 数组 + 慢启动 + Scavenge + 全局预算）
   Interface.h/.cpp     对外 C ABI（`extern "C"`）的实现：4 个入口 + 统计
   Globals.hpp       全局单例 Globals（等价 tc_globals，内部 C++ 状态，不进 C ABI）
-  tests/            6 个测试程序 + 1 个基准程序
+  Test/UnitTest/     6 个测试程序
   build.ps1 / CMakeLists.txt / README.md
 ```
 

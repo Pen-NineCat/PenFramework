@@ -145,7 +145,6 @@ namespace PenEngine
 	// ================================================================
 
 	Win32NotificationBox::Win32NotificationBox() noexcept
-		: m_ownerThread(std::this_thread::get_id())
 	{
 	}
 
@@ -185,7 +184,7 @@ namespace PenEngine
 
 	std::expected<void, NotificationError> Win32NotificationBox::Initialize(const NotificationBoxConfig& config)
 	{
-		m_ownerThread = std::this_thread::get_id();
+		m_ownerThread.Bind();
 
 		using WinToast = WinToastLib::WinToast;
 
@@ -308,8 +307,9 @@ namespace PenEngine
 	{
 		// WinToast::instance() 是 thread_local：换线程会拿到**另一个未初始化实例**，
 		// 症状是 showToast 返回 -1 且 error = NotInitialized/NoError（主文档 §2.3 D1）
-		DEBUG_VERIFY_REPORT(std::this_thread::get_id() == m_ownerThread,
-			"Win32NotificationBox::Show must run on the owner thread");
+		PENFRAMEWORK_VERIFY_CORE_PLUGIN_OWNER_THREAD(m_ownerThread,
+			"Win32NotificationBox::Show must run on the owner thread",
+			"Win32NotificationBox", "Show must run on the owner thread");
 
 		if (!m_initialized)
 			return std::unexpected(NotificationError::NotInitialized);

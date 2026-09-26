@@ -1,4 +1,4 @@
-// File /Native/Memory/tests/benchmark.cpp
+// File /Native/Memory/Test/Benchmark/benchmark.cpp
 //
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 - Present Pen-NineCat(PenNineCat) https://github.com/Pen-NineCat
@@ -18,7 +18,7 @@
 
 #include "Interface.h"
 
-#include "../Common.hpp"
+#include "../../Common.hpp"
 
 using namespace PenMemory;
 

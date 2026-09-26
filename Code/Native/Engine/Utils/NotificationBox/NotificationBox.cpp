@@ -83,7 +83,6 @@ namespace PenEngine
 	}
 
 	NotificationBox::NotificationBox() noexcept
-		: m_ownerThread(std::this_thread::get_id())
 	{
 	}
 
@@ -113,7 +112,7 @@ namespace PenEngine
 			return std::unexpected(NotificationError::InvalidConfig);
 		}
 
-		m_ownerThread = std::this_thread::get_id();
+		m_ownerThread.Bind();
 
 		m_backend = CreatePlatformBackend();
 		if (!m_backend)
@@ -235,7 +234,9 @@ namespace PenEngine
 
 	std::expected<NotificationHandle, NotificationError> NotificationBox::Show(const NotificationRequest& request)
 	{
-		DEBUG_VERIFY_REPORT(IsOwnerThread(), "NotificationBox::Show must run on the owner thread");
+		PENFRAMEWORK_VERIFY_CORE_PLUGIN_OWNER_THREAD(m_ownerThread,
+			"NotificationBox::Show must run on the owner thread",
+			"NotificationBox", "Show must run on the owner thread");
 
 		if (!m_initialized)
 			return std::unexpected(NotificationError::NotInitialized);
@@ -289,7 +290,9 @@ namespace PenEngine
 
 	bool NotificationBox::Hide(NotificationHandle handle)
 	{
-		DEBUG_VERIFY_REPORT(IsOwnerThread(), "NotificationBox::Hide must run on the owner thread");
+		PENFRAMEWORK_VERIFY_CORE_PLUGIN_OWNER_THREAD(m_ownerThread,
+			"NotificationBox::Hide must run on the owner thread",
+			"NotificationBox", "Hide must run on the owner thread");
 
 		Slot* slot = FindSlot(handle);
 		if (slot == nullptr || slot->PlatformId == 0)
@@ -361,7 +364,9 @@ namespace PenEngine
 
 	void NotificationBox::Update()
 	{
-		DEBUG_VERIFY_REPORT(IsOwnerThread(), "NotificationBox::Update must run on the owner thread");
+		PENFRAMEWORK_VERIFY_CORE_PLUGIN_OWNER_THREAD(m_ownerThread,
+			"NotificationBox::Update must run on the owner thread",
+			"NotificationBox", "Update must run on the owner thread");
 
 		// Update 不允许重入：重入会让"本帧批次"的语义变得不可解释
 		DEBUG_VERIFY_REPORT(!m_updating, "NotificationBox::Update must not be re-entered");
@@ -412,7 +417,9 @@ namespace PenEngine
 
 	void NotificationBox::Release(NotificationHandle handle) noexcept
 	{
-		DEBUG_VERIFY_REPORT(IsOwnerThread(), "NotificationBox::Release must run on the owner thread");
+		PENFRAMEWORK_VERIFY_CORE_PLUGIN_OWNER_THREAD(m_ownerThread,
+			"NotificationBox::Release must run on the owner thread",
+			"NotificationBox", "Release must run on the owner thread");
 		RollbackSlot(handle);
 	}
 }

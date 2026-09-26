@@ -107,6 +107,13 @@ namespace PenEngine
 		/// @brief 把生效配置固化进 `m_applicationData`，并输出一次带来源层的摘要
 		void ApplyConfiguration();
 
+		/// @brief 启动期第一步：拉起日志器（可执行文件目录下的 `Logs/PenFramework.log`）
+		/// @return 成功返回 true；失败返回 false（不阻断启动，Warn 以上仍有 stderr 兜底）
+		/// @note 日志路径不是配置项，因此本步骤排在解析命令行**之前** ——
+		///       这样连「命令行非法」这类启动期错误也能留在日志里
+		/// @note 日志器是进程级单例：本函数只负责初始化，生命周期与冲刷由它自己承担
+		bool InitializeLogger();
+
 		struct CoreApplicationData
 		{
 			String ApplicationTitle;

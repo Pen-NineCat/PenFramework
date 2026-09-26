@@ -37,8 +37,10 @@ namespace PenEngine
 
 	void CoroutineScheduler::VerifyThread() const
 	{
-		if (std::this_thread::get_id() != m_ownerThread)
-			ThrowException(Exception("CoroutineSchedulerThreadViolation", "调度器仅支持单线程访问，请勿跨线程Post/Update"));
+		// 统一强度：Debug 报告并中断（__fastfail），Release 抛 CorePluginThreadViolation
+		PENFRAMEWORK_VERIFY_CORE_PLUGIN_OWNER_THREAD(m_ownerThread,
+			"CoroutineScheduler：调度器仅支持单线程访问，请勿跨线程 Post/Update",
+			"CoroutineScheduler", "调度器仅支持单线程访问，请勿跨线程Post/Update");
 	}
 
 	// ------------------------------------------------------------------

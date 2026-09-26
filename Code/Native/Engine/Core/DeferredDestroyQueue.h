@@ -5,6 +5,7 @@
 
 #pragma once
 #include "../Object/PObject.h"
+#include "../Utils/OwnerThread.hpp"
 #include "../Utils/Singleton.hpp"
 #include <boost/unordered/unordered_flat_map.hpp>
 
@@ -35,9 +36,20 @@ namespace PenEngine
 		{
 			return m_deferredDestroyObjects.find(object) != m_deferredDestroyObjects.end();
 		}
+
+		/// @brief 判断当前线程是否为队列所属线程（单例在主线程首次构造 ⇒ 即主线程）
+		[[nodiscard]] bool IsOwnerThread() const noexcept
+		{
+			return m_ownerThread.IsOwner();
+		}
 	private:
 		/// @note 常量初始化（不参与动态析构），因此可在任何时刻安全查询
 		inline static bool s_alive = false;
+
+		/// @brief 归属线程：本队列的增删与遍历都只允许在它上面发生。
+		///        四个入口（Post/Catch/Release/Update）都做校验：Debug 报告并中断，
+		///        Release 抛 `CorePluginThreadViolation`（见 .cpp）
+		OwnerThread m_ownerThread;
 
 		boost::unordered::unordered_flat_map<PObject*, Usize> m_deferredDestroyObjects;
 	};

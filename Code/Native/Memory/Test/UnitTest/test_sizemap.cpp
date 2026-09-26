@@ -1,4 +1,4 @@
-// File /Native/Memory/tests/test_sizemap.cpp
+// File /Native/Memory/Test/UnitTest/test_sizemap.cpp
 //
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 - Present Pen-NineCat(PenNineCat) https://github.com/Pen-NineCat
@@ -7,7 +7,7 @@
 
 #include "Common.hpp"
 #include "MiniTest.h"
-#include "../Globals.hpp"
+#include "../../Globals.hpp"
 
 using namespace PenMemory;
 

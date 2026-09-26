@@ -6,6 +6,7 @@
 #pragma once
 
 #include "../../Core/Environment.h"
+#include "../../Utils/OwnerThread.hpp"
 #include "Internal/INotificationBackend.hpp"
 #include "NotificationTypes.hpp"
 #include <expected>
@@ -88,7 +89,7 @@ namespace PenEngine
 		static bool IsAcceptableImagePath(StringView path) noexcept;
 
 		std::shared_ptr<CompletionQueue> m_queue;
-		std::thread::id m_ownerThread{};
+		OwnerThread m_ownerThread;
 
 		/// @brief 本后端是否持有一次待配对的 COM 初始化
 		/// @note 只有 `SUCCEEDED(CoInitializeEx(...))`（含 `S_FALSE`）才置位。

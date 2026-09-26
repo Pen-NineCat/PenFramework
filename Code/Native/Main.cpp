@@ -4,6 +4,7 @@
 // Copyright (c) 2026 - Present Pen-NineCat(PenNineCat) https://github.com/Pen-NineCat
 
 #include "Engine/Core/CoreApplication.h"
+#include "Engine/IO/Filesystem/FileDevice.hpp"
 
 // 进程入口只做三件事：认领入口签名、把 `argc/argv` 交给 CoreApplication、返回它的退出码。
 // 取参、解析、装载配置、构造应用、主循环都在 CoreApplication 内（见其 I1）。

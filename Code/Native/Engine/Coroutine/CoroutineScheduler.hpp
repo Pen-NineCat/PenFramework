@@ -8,6 +8,7 @@
 #include "../Exception/Exception.hpp"
 #include "../Object/PObject.h"
 #include "../Object/SignalObject.hpp"
+#include "../Utils/OwnerThread.hpp"
 #include "../Utils/ResourceScopeGuard.hpp"
 #include "../Utils/Singleton.hpp"
 #include "CoroutineTask.hpp"
@@ -77,7 +78,7 @@ namespace PenEngine
 		/// @brief 判断当前线程是否为调度器所属线程
 		[[nodiscard]] bool IsOwnerThread() const noexcept
 		{
-			return std::this_thread::get_id() == m_ownerThread;
+			return m_ownerThread.IsOwner();
 		}
 
 		CoroutineScheduler() noexcept = default;
@@ -191,7 +192,9 @@ namespace PenEngine
 		Usize m_updateDepth = 0;
 		bool m_draining = false;
 		std::function<void(std::exception_ptr)> m_exceptionHandler;
-		std::thread::id m_ownerThread = std::this_thread::get_id();
+
+		/// @brief 归属线程：单例总是在主线程首次构造，故这里记录的就是主线程
+		OwnerThread m_ownerThread;
 	};
 
 	template <typename T>

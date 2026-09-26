@@ -8,6 +8,7 @@
 #include "../../Core/Environment.h"
 #include "../../Object/SignalObject.hpp"
 #include "../../Coroutine/CoroutineTask.hpp"
+#include "../../Utils/OwnerThread.hpp"
 #include "../../Utils/Singleton.hpp"
 #include "NotificationTypes.hpp"
 
@@ -71,7 +72,7 @@ namespace PenEngine
 		std::expected<void, NotificationError> Initialize(const NotificationBoxConfig& config);
 
 		[[nodiscard]] bool IsInitialized() const noexcept { return m_initialized; }
-		[[nodiscard]] bool IsOwnerThread() const noexcept { return std::this_thread::get_id() == m_ownerThread; }
+		[[nodiscard]] bool IsOwnerThread() const noexcept { return m_ownerThread.IsOwner(); }
 
 		/// @brief 查询当前能力（可重复调用；Linux 侧结果可能随守护进程重启而变）
 		[[nodiscard]] NotificationCapabilities Capabilities() const noexcept;
@@ -186,7 +187,8 @@ namespace PenEngine
 		/// @brief drain 复用缓冲，避免每帧分配
 		std::vector<Internal::BackendCompletion> m_completionScratch;
 
-		std::thread::id m_ownerThread{};
+		/// @brief 归属线程（I1）：构造即绑定，`Initialize()` 会再绑定一次
+		OwnerThread m_ownerThread;
 		bool m_initialized = false;
 		bool m_updating = false;
 	};

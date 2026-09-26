@@ -1,4 +1,4 @@
-// File /Native/Memory/tests/test_threadcache.cpp
+// File /Native/Memory/Test/UnitTest/test_threadcache.cpp
 //
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 - Present Pen-NineCat(PenNineCat) https://github.com/Pen-NineCat
@@ -10,7 +10,7 @@
 
 #include "MiniTest.h"
 #include "ThreadCache.h"
-#include "../Globals.hpp"
+#include "../../Globals.hpp"
 
 using namespace PenMemory;
 

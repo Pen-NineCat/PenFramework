@@ -1,4 +1,4 @@
-﻿{
+{
   "version": 3,
   "configurePresets": [
     {
@@ -9,7 +9,9 @@
       "installDir": "${sourceDir}/out/install/${presetName}",
       "cacheVariables": {
         "CMAKE_C_COMPILER": "cl.exe",
-        "CMAKE_CXX_COMPILER": "cl.exe"
+        "CMAKE_CXX_COMPILER": "cl.exe",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_PROJECT_TOP_LEVEL_INCLUDES": "$env{VSINSTALLDIR}Common7/IDE/CommonExtensions/Microsoft/CMake/cmake/Microsoft/SegmentHeap.cmake"
       },
       "condition": {
         "type": "equals",
@@ -19,7 +21,7 @@
     },
     {
       "name": "x64-debug",
-      "displayName": "x64 Debug",
+      "displayName": "x64 Debug Terminal (main)",
       "description": "控制台子系统，入口为 int main",
       "inherits": "windows-base",
       "architecture": {
@@ -29,59 +31,64 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "OUTPUT_BUILD_TYPE": "Terminal",
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-        "CMAKE_PROJECT_TOP_LEVEL_INCLUDES": "$env{VSINSTALLDIR}Common7/IDE/CommonExtensions/Microsoft/CMake/cmake/Microsoft/SegmentHeap.cmake"
+        "PENFRAMEWORK_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "x64-debug test",
+      "displayName": "x64 Debug Terminal + Tests (manual)",
+      "description": "与 x64-debug 同配置，但落在独立构建目录 out/build/x64-debug test：手工构建/跑 ctest 时不干扰 agent 用的 x64-debug 构建目录",
+      "inherits": "x64-debug",
+      "cacheVariables": {
+        "PENFRAMEWORK_BUILD_TESTS": "ON"
       }
     },
     {
       "name": "x64-debug native",
       "displayName": "x64 Debug Native (WinMain)",
       "description": "Windows 子系统，入口为 WinMain，无控制台窗口",
-      "inherits": "x64-debug",
+      "inherits": "windows-base",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
         "OUTPUT_BUILD_TYPE": "Native"
       }
     },
     {
       "name": "x64-release",
-      "displayName": "x64 Release",
+      "displayName": "x64 Release Terminal (main)",
       "description": "控制台子系统，入口为 int main",
-      "inherits": "x64-debug",
+      "inherits": "windows-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "OUTPUT_BUILD_TYPE": "Terminal",
-        "CMAKE_PROJECT_TOP_LEVEL_INCLUDES": "$env{VSINSTALLDIR}Common7/IDE/CommonExtensions/Microsoft/CMake/cmake/Microsoft/SegmentHeap.cmake"
+        "OUTPUT_BUILD_TYPE": "Terminal"
       }
     },
     {
       "name": "x64-release native",
       "displayName": "x64 Release Native (WinMain)",
       "description": "Windows 子系统，入口为 WinMain，无控制台窗口",
-      "inherits": "x64-release",
-      "cacheVariables": {
-        "OUTPUT_BUILD_TYPE": "Native"
-      }
-    },
-    {
-      "name": "x86-debug",
-      "displayName": "x86 Debug",
       "inherits": "windows-base",
-      "architecture": {
-        "value": "x86",
-        "strategy": "external"
-      },
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_PROJECT_TOP_LEVEL_INCLUDES": "$env{VSINSTALLDIR}Common7/IDE/CommonExtensions/Microsoft/CMake/cmake/Microsoft/SegmentHeap.cmake"
-      }
-    },
-    {
-      "name": "x86-release",
-      "displayName": "x86 Release",
-      "inherits": "x86-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_PROJECT_TOP_LEVEL_INCLUDES": "$env{VSINSTALLDIR}Common7/IDE/CommonExtensions/Microsoft/CMake/cmake/Microsoft/SegmentHeap.cmake"
+        "OUTPUT_BUILD_TYPE": "Native"
+      }
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "x64-debug",
+      "displayName": "ctest (x64 Debug, agent path)",
+      "configurePreset": "x64-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "x64-debug test",
+      "displayName": "ctest (x64 Debug, manual path)",
+      "configurePreset": "x64-debug test",
+      "output": {
+        "outputOnFailure": true
       }
     }
   ]
