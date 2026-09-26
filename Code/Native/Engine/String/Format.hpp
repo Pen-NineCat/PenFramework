@@ -15,10 +15,10 @@ namespace PenEngine
 	{
 		String str;
 
-		#ifdef _MSC_VER
+		#ifdef PENFRAMEWORK_COMPILER_MSVC
 		// MSVC STL可以通过这个api计算出按照这个参数列表需要分配的估计大小，但是libcxx并没有找到类似的api
 		str.Reserve(fmt.size() + args._Estimate_required_capacity());
-		#endif // _MSC_VER
+		#endif // PENFRAMEWORK_COMPILER_MSVC
 
 		std::vformat_to(std::back_insert_iterator(str), fmt, args);
 		return str;
@@ -29,10 +29,10 @@ namespace PenEngine
 	{
 		buffer.Clear();
 
-		#ifdef _MSC_VER
+		#ifdef PENFRAMEWORK_COMPILER_MSVC
 		// MSVC STL可以通过这个api计算出按照这个参数列表需要分配的估计大小，但是libcxx并没有找到类似的api
 		buffer.Reserve(fmt.size() + args._Estimate_required_capacity());
-		#endif // _MSC_VER
+		#endif // PENFRAMEWORK_COMPILER_MSVC
 
 		std::vformat_to(std::back_insert_iterator(buffer), fmt, args);
 	}
@@ -42,10 +42,10 @@ namespace PenEngine
 	{
 		WString str;
 
-		#ifdef _MSC_VER
+		#ifdef PENFRAMEWORK_COMPILER_MSVC
 		// MSVC STL可以通过这个api计算出按照这个参数列表需要分配的估计大小，但是libcxx并没有找到类似的api
 		str.Reserve(fmt.size() + args._Estimate_required_capacity());
-		#endif // _MSC_VER
+		#endif // PENFRAMEWORK_COMPILER_MSVC
 
 		std::vformat_to(std::back_insert_iterator(str), fmt, args);
 		return str;
@@ -55,10 +55,10 @@ namespace PenEngine
 	void VFormatTo(WString& buffer, std::wstring_view fmt, std::wformat_args args)
 	{
 		buffer.Clear();
-		#ifdef _MSC_VER
+		#ifdef PENFRAMEWORK_COMPILER_MSVC
 		// MSVC STL可以通过这个api计算出按照这个参数列表需要分配的估计大小，但是libcxx并没有找到类似的api
 		buffer.Reserve(fmt.size() + args._Estimate_required_capacity());
-		#endif // _MSC_VER
+		#endif // PENFRAMEWORK_COMPILER_MSVC
 
 		std::vformat_to(std::back_insert_iterator(buffer), fmt, args);
 	}
