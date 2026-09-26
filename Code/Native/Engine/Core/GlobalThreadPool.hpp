@@ -43,7 +43,7 @@ namespace PenEngine
 
 		[[nodiscard]] static bool IsPoolWorker() noexcept { return ThreadPool::IsPoolWorker(); }
 
-		void SetTaskExceptionHandler(std::function<void(std::exception_ptr)> handler) { return; m_pool->SetTaskExceptionHandler(handler); }
+		void SetTaskExceptionHandler(std::function<void(std::exception_ptr)> handler) { return m_pool->SetTaskExceptionHandler(std::move(handler)); }
 	private:
 		std::unique_ptr<ThreadPool> m_pool;
 	};
