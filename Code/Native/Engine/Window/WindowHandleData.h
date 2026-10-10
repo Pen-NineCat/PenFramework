@@ -7,12 +7,16 @@
 
 #include "../Core/Environment.h"
 
+#include "../String/String.hpp"
+#ifdef PENFRAMEWORK_OS_WIN32
+#include "../OS/Win/Windows.h"
+#endif
 namespace PenEngine
 {
 	struct WindowHandleData
 	{
 #ifdef PENFRAMEWORK_OS_WIN32
-		void* Hwnd;
-#endif
+		HWND Hwnd;
+#endif // PENFRAMEWORK_OS_WIN32
 	};
 }

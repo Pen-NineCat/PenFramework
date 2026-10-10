@@ -18,14 +18,31 @@ namespace PenEngine
 		/// @return 运行结果
 		int Exec();
 
-		/// @brief 终止所有子系统
-		/// @return 终止结果
-		int Terminate();
 	private:
-		void CreateWindow();
+		struct ApplicationData
+		{
+			String Title;
+			U16 Width;
+			U16 Height;
+			bool Maximized;
+
+#ifdef PENFRAMEWORK_OS_WIN32
+			HINSTANCE HInstance;
+#endif // PENFRAMEWORK_OS_WIN32
+			WindowHandleData WindowHandle;
+		};
+
+		/// @brief 关闭所有子系统
+		/// @return 关闭结果
+		int Shutdown();
+
+		void ParseCommandLine(int argc, char* argv[]);
+
+		void PreLoad();
+		void LoadWindow();
 		bool DispatchWindowEvent();
 
-
 		Window m_window;
+		ApplicationData m_data;
 	};
 }

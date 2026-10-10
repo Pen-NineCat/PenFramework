@@ -30,8 +30,14 @@ namespace PenEngine
 
 		/// @brief 清空窗口消息列表
 		void ClearWindowEventList();
+
+		LRESULT WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
 	private:
-		std::vector<IEngineEvent*> m_currentMessageList;
+		std::vector<IEngineEvent*> m_currentWindowEventList;
 		WindowEventData m_eventData;
+
+		HINSTANCE m_hInstance;
+		HWND m_hWnd;
+		WString m_title;
 	};
 }

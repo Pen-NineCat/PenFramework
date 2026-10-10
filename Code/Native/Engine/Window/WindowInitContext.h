@@ -8,6 +8,9 @@
 #include "../Core/Environment.h"
 
 #include "../String/String.hpp"
+#ifdef PENFRAMEWORK_OS_WIN32
+#include "../OS/Win/Windows.h"
+#endif
 
 namespace PenEngine
 {
@@ -18,6 +21,12 @@ namespace PenEngine
 		U16 Width;
 		U16 Height;
 		
-		bool IsMaximized;
+		#ifdef PENFRAMEWORK_OS_WIN32
+		HINSTANCE HInstance;
+		#endif // PENFRAMEWORK_OS_WIN32
+
+		bool Maximized;
+
+
 	};
 }

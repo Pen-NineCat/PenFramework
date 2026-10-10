@@ -9,10 +9,10 @@
 #include "../Utils/Concept.hpp"
 #include "StringView.hpp"
 #include <algorithm>
+#include <boost/locale/encoding_utf.hpp>
 #include <format>
 #include <limits>
 #include <string>
-#include <boost/locale/encoding_utf.hpp>
 
 namespace PenEngine
 {
