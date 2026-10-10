@@ -1,0 +1,52 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "windows-MSVC",
+      "hidden": true,
+      "description": "Windows X86 with MSVC",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl.exe",
+        "CMAKE_CXX_COMPILER": "cl.exe",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_PROJECT_TOP_LEVEL_INCLUDES": "$env{VSINSTALLDIR}Common7/IDE/CommonExtensions/Microsoft/CMake/cmake/Microsoft/SegmentHeap.cmake"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "windows-x64-msvc-debug",
+      "displayName": "Windows x64 Debug Terminal (main)",
+      "description": "控制台子系统",
+      "inherits": "windows-MSVC",
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PENFRAMEWORK_CMAKE_OUTPUT_BUILD_TYPE": "Terminal",
+        "PENFRAMEWORK_CMAKE_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "windows-x64-msvc-debug native",
+      "displayName": "Windows x64 Debug Terminal (wmain)",
+      "description": "窗口子系统",
+      "inherits": "windows-MSVC",
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PENFRAMEWORK_CMAKE_OUTPUT_BUILD_TYPE": "Native",
+        "PENFRAMEWORK_CMAKE_BUILD_TESTS": "OFF"
+      }
+    }
+  ]
+}
