@@ -2,7 +2,7 @@
   "version": 3,
   "configurePresets": [
     {
-      "name": "windows-MSVC",
+      "name": "windows-base",
       "hidden": true,
       "description": "Windows X86 with MSVC",
       "generator": "Ninja",
@@ -19,33 +19,35 @@
       }
     },
     {
-      "name": "windows-x64-msvc-debug",
-      "displayName": "Windows x64 Debug Terminal (main)",
+      "name": "windows-x64-game-debug terminal",
+      "displayName": "Windows x64 Game Debug Terminal",
       "description": "控制台子系统",
-      "inherits": "windows-MSVC",
+      "inherits": "windows-base",
       "architecture": {
         "value": "x64",
         "strategy": "external"
       },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "PENFRAMEWORK_CMAKE_OUTPUT_BUILD_TYPE": "Terminal",
-        "PENFRAMEWORK_CMAKE_BUILD_TESTS": "OFF"
+        "PENFRAMEWORK_CMAKE_WIN_SUBSYSTEM": "Terminal",
+        "PENFRAMEWORK_CMAKE_BUILD_TESTS": "OFF",
+        "PENFRAMEWORK_CMAKE_TARGET": "Game"
       }
     },
     {
-      "name": "windows-x64-msvc-debug native",
-      "displayName": "Windows x64 Debug Terminal (wmain)",
+      "name": "windows-x64-game-debug native",
+      "displayName": "Windows x64 Game Debug Native",
       "description": "窗口子系统",
-      "inherits": "windows-MSVC",
+      "inherits": "windows-base",
       "architecture": {
         "value": "x64",
         "strategy": "external"
       },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "PENFRAMEWORK_CMAKE_OUTPUT_BUILD_TYPE": "Native",
-        "PENFRAMEWORK_CMAKE_BUILD_TESTS": "OFF"
+        "PENFRAMEWORK_CMAKE_WIN_SUBSYSTEM": "Native",
+        "PENFRAMEWORK_CMAKE_BUILD_TESTS": "OFF",
+        "PENFRAMEWORK_CMAKE_TARGET": "Game"
       }
     }
   ]
